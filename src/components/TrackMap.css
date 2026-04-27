@@ -1,0 +1,41 @@
+.track-map {
+  background: #1f1f2e;
+  border: 1px solid #2f2f3f;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.track-map__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: #0a0a14;
+  border-bottom: 2px solid #e8002d;
+}
+
+.track-map__title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #e8002d;
+  font-family: Arial, sans-serif;
+}
+
+.track-map__demo-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: #2f2f3f;
+  color: #888899;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.5px;
+}
+
+.track-map__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #12121e;
+}
