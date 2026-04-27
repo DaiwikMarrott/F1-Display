@@ -34,6 +34,18 @@ function calcWinProbability(position: number, gapSeconds: number, lapsRemaining:
   return Math.max(0, raw);
 }
 
+const DEMO_LAPS_REMAINING = 30;
+
+function applyWinProbabilities(items: DriverStanding[], lapsRemaining: number): DriverStanding[] {
+  const rawScores = items.map(s => {
+    const gapSec = s.gapToLeader === 'LEADER' ? 0
+      : parseFloat(s.gapToLeader.replace('+', '')) || 0;
+    return calcWinProbability(s.position, gapSec, lapsRemaining);
+  });
+  const total = rawScores.reduce((a, b) => a + b, 0) || 1;
+  return items.map((s, i) => ({ ...s, winProbability: (rawScores[i] / total) * 100 }));
+}
+
 // Demo fallback data when API returns no results
 const DEMO_DRIVERS: Driver[] = [
   { driver_number: 1,  broadcast_name: 'M VERSTAPPEN', full_name: 'Max Verstappen',     name_acronym: 'VER', team_name: 'Red Bull Racing', team_colour: '3671C6', session_key: 0 },
@@ -60,7 +72,7 @@ const DEMO_DRIVERS: Driver[] = [
 
 function buildDemoStandings(): DriverStanding[] {
   const compounds: Stint['compound'][] = ['SOFT', 'MEDIUM', 'HARD', 'SOFT', 'MEDIUM'];
-  return DEMO_DRIVERS.map((driver, idx) => {
+  const raw = DEMO_DRIVERS.map((driver, idx) => {
     const position = idx + 1;
     const gapSec = idx === 0 ? 0 : idx * 1.2 + Math.random() * 3;
     const lastLap = 90 + Math.random() * 5;
@@ -89,6 +101,7 @@ function buildDemoStandings(): DriverStanding[] {
       winProbability: 0,
     };
   });
+  return applyWinProbabilities(raw, DEMO_LAPS_REMAINING);
 }
 
 export interface F1DataState {
@@ -116,6 +129,9 @@ export function useF1Data(): F1DataState {
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
+  // Track demo lap so it increments realistically across polls
+  const demoLapRef = useRef(14);
+  const demoModeRef = useRef(false);
 
   const dismissPitNotification = useCallback((id: string) => {
     setPitNotifications(prev => prev.filter(n => n.id !== id));
@@ -129,7 +145,28 @@ export function useF1Data(): F1DataState {
       setSession(sess);
 
       if (!sess) {
-        setStandings(buildDemoStandings());
+        demoModeRef.current = true;
+        // Increment demo lap every other poll (≈4 s per lap in demo)
+        if (demoLapRef.current < 57) demoLapRef.current += 1;
+        setCurrentLap(demoLapRef.current);
+        setTotalLaps(57);
+        const demoStandings = buildDemoStandings();
+        setStandings(demoStandings);
+        // Occasionally fire a simulated pit notification
+        if (demoLapRef.current % 8 === 0) {
+          const pitDriver = demoStandings[Math.floor(Math.random() * 10) + 2];
+          if (pitDriver) {
+            const notif: PitNotification = {
+              id: `demo-pit-${demoLapRef.current}-${pitDriver.driver.driver_number}`,
+              driverNumber: pitDriver.driver.driver_number,
+              driverName: pitDriver.driver.name_acronym,
+              position: pitDriver.position,
+              lapNumber: demoLapRef.current,
+              timestamp: Date.now(),
+            };
+            setPitNotifications(prev => [...prev.slice(-3), notif]);
+          }
+        }
         setIsLoading(false);
         return;
       }
@@ -155,6 +192,10 @@ export function useF1Data(): F1DataState {
       const locationsData: Location[] = locations.status === 'fulfilled' ? locations.value : [];
 
       if (driversData.length === 0) {
+        demoModeRef.current = true;
+        if (demoLapRef.current < 57) demoLapRef.current += 1;
+        setCurrentLap(demoLapRef.current);
+        setTotalLaps(57);
         setStandings(buildDemoStandings());
         setIsLoading(false);
         return;
@@ -300,24 +341,19 @@ export function useF1Data(): F1DataState {
         };
       });
 
-      // Calculate win probabilities
-      const rawScores = newStandings.map(s => {
-        const gapSec = s.gapToLeader === 'LEADER' ? 0
-          : parseFloat(s.gapToLeader.replace('+', '')) || 0;
-        return calcWinProbability(s.position, gapSec, lapsRemaining);
-      });
-      const total = rawScores.reduce((a, b) => a + b, 0) || 1;
-      newStandings.forEach((s, i) => {
-        s.winProbability = (rawScores[i] / total) * 100;
-      });
-
-      setStandings(newStandings);
+      // Calculate win probabilities using shared helper
+      const finalStandings = applyWinProbabilities(newStandings, lapsRemaining);
+      setStandings(finalStandings);
       setIsLive(sess.status === 'started' || sess.status === 'active');
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setError(msg);
       if (standingsRef.current.length === 0) {
+        demoModeRef.current = true;
+        if (demoLapRef.current < 57) demoLapRef.current += 1;
+        setCurrentLap(demoLapRef.current);
+        setTotalLaps(57);
         setStandings(buildDemoStandings());
       }
     } finally {

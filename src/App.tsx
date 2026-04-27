@@ -23,7 +23,7 @@ const App: React.FC = () => {
     ? `${session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
-  const sessionType = session?.session_name ?? 'LOADING...';
+  const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
 
   return (
     <div className="app">
@@ -58,8 +58,11 @@ const App: React.FC = () => {
 
         <div className="app-topbar__right">
           {error && (
-            <span className="app-topbar__error" title={error}>
-              ⚠ {error}
+            <span
+              className="app-topbar__error"
+              title={error}
+            >
+              ⚠ {error.includes('fetch') ? 'API UNAVAILABLE — DEMO MODE' : error}
             </span>
           )}
         </div>
