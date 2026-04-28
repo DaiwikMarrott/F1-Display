@@ -46,7 +46,6 @@ function applyWinProbabilities(items: DriverStanding[], lapsRemaining: number): 
   return items.map((s, i) => ({ ...s, winProbability: (rawScores[i] / total) * 100 }));
 }
 
-// Demo fallback data when API returns no results
 const DEMO_DRIVERS: Driver[] = [
   { driver_number: 1,  broadcast_name: 'M VERSTAPPEN', full_name: 'Max Verstappen',     name_acronym: 'VER', team_name: 'Red Bull Racing', team_colour: '3671C6', session_key: 0 },
   { driver_number: 16, broadcast_name: 'C LECLERC',    full_name: 'Charles Leclerc',    name_acronym: 'LEC', team_name: 'Ferrari',          team_colour: 'E8002D', session_key: 0 },
@@ -114,6 +113,9 @@ export interface F1DataState {
   isLoading: boolean;
   error: string | null;
   dismissPitNotification: (id: string) => void;
+  availableRaces: Session[];
+  selectedRaceKey: number | null;
+  setSelectedRaceKey: (key: number | null) => void;
 }
 
 export function useF1Data(): F1DataState {
@@ -125,11 +127,12 @@ export function useF1Data(): F1DataState {
   const [isLive, setIsLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [availableRaces, setAvailableRaces] = useState<Session[]>([]);
+  const [selectedRaceKey, setSelectedRaceKey] = useState<number | null>(null);
 
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
-  // Track demo lap so it increments realistically across polls
   const demoLapRef = useRef(14);
   const demoModeRef = useRef(false);
 
@@ -139,42 +142,59 @@ export function useF1Data(): F1DataState {
 
   const fetchData = useCallback(async () => {
     try {
-      // 1. Get latest session
-      const sessions = await fetchJSON<Session[]>(`${BASE_URL}/sessions?session_key=latest`);
-      const sess = sessions[0] ?? null;
-      setSession(sess);
+      // 1. Fetch all races for the current year
+      let sessionsResp: Session[] = [];
+      try {
+        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=2024`);
+      } catch (e) {
+        console.warn('Failed to fetch sessions:', e);
+      }
 
-      if (!sess) {
+      if (sessionsResp.length > 0) {
+        setAvailableRaces(sessionsResp);
+      }
+
+      // 2. Determine which race to load
+      let targetSession: Session | null = null;
+
+      if (selectedRaceKey !== null) {
+        // User selected a specific race
+        targetSession = sessionsResp.find(s => s.session_key === selectedRaceKey) || null;
+      } else {
+        // Load the latest session or next upcoming race
+        try {
+          const latestSessions = await fetchJSON<Session[]>(`${BASE_URL}/sessions?session_key=latest`);
+          targetSession = latestSessions[0] || null;
+        } catch (e) {
+          console.warn('Failed to fetch latest session:', e);
+          // Fallback: get the most recent session from all sessions
+          if (sessionsResp.length > 0) {
+            // Find the session with the latest date
+            targetSession = sessionsResp.reduce((latest, current) => 
+              new Date(current.date_start) > new Date(latest.date_start) ? current : latest
+            );
+          }
+        }
+      }
+
+      if (!targetSession) {
+        // No session available, use demo mode
         demoModeRef.current = true;
-        // Increment demo lap every other poll (≈4 s per lap in demo)
         if (demoLapRef.current < 57) demoLapRef.current += 1;
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         const demoStandings = buildDemoStandings();
         setStandings(demoStandings);
-        // Occasionally fire a simulated pit notification
-        if (demoLapRef.current % 8 === 0) {
-          const pitDriver = demoStandings[Math.floor(Math.random() * 10) + 2];
-          if (pitDriver) {
-            const notif: PitNotification = {
-              id: `demo-pit-${demoLapRef.current}-${pitDriver.driver.driver_number}`,
-              driverNumber: pitDriver.driver.driver_number,
-              driverName: pitDriver.driver.name_acronym,
-              position: pitDriver.position,
-              lapNumber: demoLapRef.current,
-              timestamp: Date.now(),
-            };
-            setPitNotifications(prev => [...prev.slice(-3), notif]);
-          }
-        }
+        setSession(null);
         setIsLoading(false);
         return;
       }
 
-      const sk = sess.session_key;
-      const isRace = sess.session_type === 'Race';
+      setSession(targetSession);
+      const sk = targetSession.session_key;
+      const isRace = targetSession.session_type === 'Race';
 
-      // 2. Fetch all needed data in parallel
+      // 3. Fetch all race data in parallel
       const [drivers, rawPositions, laps, stints, pits, locations] = await Promise.allSettled([
         fetchJSON<Driver[]>(`${BASE_URL}/drivers?session_key=${sk}`),
         fetchJSON<Position[]>(`${BASE_URL}/position?session_key=${sk}`),
@@ -201,21 +221,19 @@ export function useF1Data(): F1DataState {
         return;
       }
 
-      // Latest position per driver
+      // Build data maps
       const latestPos = new Map<number, Position>();
       for (const p of positionsData) {
         const existing = latestPos.get(p.driver_number);
         if (!existing || p.date > existing.date) latestPos.set(p.driver_number, p);
       }
 
-      // Latest lap per driver
       const latestLap = new Map<number, Lap>();
       for (const l of lapsData) {
         const existing = latestLap.get(l.driver_number);
         if (!existing || l.lap_number > existing.lap_number) latestLap.set(l.driver_number, l);
       }
 
-      // Best lap per driver
       const bestLap = new Map<number, number>();
       for (const l of lapsData) {
         if (l.lap_duration == null) continue;
@@ -223,20 +241,17 @@ export function useF1Data(): F1DataState {
         if (cur === undefined || l.lap_duration < cur) bestLap.set(l.driver_number, l.lap_duration);
       }
 
-      // Current stint per driver (last stint)
       const currentStints = new Map<number, Stint>();
       for (const s of stintsData) {
         const existing = currentStints.get(s.driver_number);
         if (!existing || s.stint_number > existing.stint_number) currentStints.set(s.driver_number, s);
       }
 
-      // Pit count per driver
       const pitCount = new Map<number, number>();
       for (const p of pitsData) {
         pitCount.set(p.driver_number, (pitCount.get(p.driver_number) ?? 0) + 1);
       }
 
-      // Latest location per driver
       const latestLocation = new Map<number, Location>();
       for (const loc of locationsData) {
         const existing = latestLocation.get(loc.driver_number);
@@ -249,11 +264,11 @@ export function useF1Data(): F1DataState {
         if (lap.lap_number > maxLap) maxLap = lap.lap_number;
       }
       if (maxLap > 0) setCurrentLap(maxLap);
-      if (isRace) setTotalLaps(57); // approximation; API doesn't expose this directly
+      if (isRace) setTotalLaps(57);
 
       const lapsRemaining = Math.max(1, totalLaps - maxLap);
 
-      // Fastest lap overall
+      // Find fastest lap driver
       let fastestOverall = Infinity;
       for (const [, dur] of bestLap) {
         if (dur < fastestOverall) fastestOverall = dur;
@@ -263,13 +278,14 @@ export function useF1Data(): F1DataState {
         if (dur === fastestOverall) fastestDriver = driverNum;
       }
 
-      // Leader's latest lap time for gap calculation
+      // Sort by position
       const sortedByPos = [...driversData].sort((a, b) => {
         const pa = latestPos.get(a.driver_number)?.position ?? 99;
         const pb = latestPos.get(b.driver_number)?.position ?? 99;
         return pa - pb;
       });
 
+      // Get leader lap time
       const leaderLapTimes: number[] = [];
       for (const l of lapsData) {
         if (l.driver_number === sortedByPos[0]?.driver_number && l.lap_duration != null) {
@@ -288,6 +304,7 @@ export function useF1Data(): F1DataState {
         if (curCount > prevCount) {
           const driver = driversData.find(d => d.driver_number === pit.driver_number);
           const pos = latestPos.get(pit.driver_number)?.position ?? 0;
+          const stint = currentStints.get(pit.driver_number);
           if (driver) {
             newPitNotifications.push({
               id: `${pit.driver_number}-${pit.lap_number}-${Date.now()}`,
@@ -296,18 +313,19 @@ export function useF1Data(): F1DataState {
               position: pos,
               lapNumber: pit.lap_number,
               timestamp: Date.now(),
+              compound: stint?.compound,
+              duration: pit.pit_duration ?? undefined,
             });
           }
         }
       }
 
-      // Update pit reference
       const newPitRef = new Map<number, number>();
       for (const [k, v] of pitCount) newPitRef.set(k, v);
       prevPitDataRef.current = newPitRef;
 
       if (newPitNotifications.length > 0) {
-        setPitNotifications(prev => [...prev, ...newPitNotifications]);
+        setPitNotifications(prev => [...prev.slice(-5), ...newPitNotifications]);
       }
 
       // Build standings
@@ -323,7 +341,6 @@ export function useF1Data(): F1DataState {
         const loc = latestLocation.get(driver.driver_number) ?? null;
         const last = lap?.lap_duration ?? null;
 
-        // Gap calculation: approximate based on position * avg lap time fraction
         const gapSec = pos === 1 ? 0 : (pos - 1) * avgLeaderLap * 0.003 + Math.random() * 0.5;
 
         return {
@@ -341,10 +358,9 @@ export function useF1Data(): F1DataState {
         };
       });
 
-      // Calculate win probabilities using shared helper
       const finalStandings = applyWinProbabilities(newStandings, lapsRemaining);
       setStandings(finalStandings);
-      setIsLive(sess.status === 'started' || sess.status === 'active');
+      setIsLive(targetSession.status === 'started' || targetSession.status === 'active');
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -359,10 +375,15 @@ export function useF1Data(): F1DataState {
     } finally {
       setIsLoading(false);
     }
-  }, [totalLaps]);
+  }, [selectedRaceKey, totalLaps]);
 
+  // Fetch on mount and when selectedRaceKey changes
   useEffect(() => {
     fetchData();
+  }, [selectedRaceKey, fetchData]);
+
+  // Poll for updates
+  useEffect(() => {
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchData]);
@@ -377,5 +398,8 @@ export function useF1Data(): F1DataState {
     isLoading,
     error,
     dismissPitNotification,
+    availableRaces,
+    selectedRaceKey,
+    setSelectedRaceKey,
   };
 }

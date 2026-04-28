@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useF1Data } from './hooks/useF1Data';
 import TimingTower from './components/TimingTower';
 import TrackMap from './components/TrackMap';
@@ -17,13 +17,36 @@ const App: React.FC = () => {
     isLoading,
     error,
     dismissPitNotification,
+    availableRaces,
+    selectedRaceKey,
+    setSelectedRaceKey,
   } = useF1Data();
+
+  const [showRaceSelector, setShowRaceSelector] = useState(false);
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
   const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
+
+  // Get unique races, sorted by date
+  const uniqueRaces = useMemo(() => {
+    const seen = new Set<number>();
+    const filtered = availableRaces.filter(race => {
+      if (seen.has(race.session_key)) return false;
+      seen.add(race.session_key);
+      return true;
+    });
+    return filtered.sort((a, b) => 
+      new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
+    );
+  }, [availableRaces]);
+
+  const handleRaceSelect = (sessionKey: number | null) => {
+    setSelectedRaceKey(sessionKey);
+    setShowRaceSelector(false);
+  };
 
   return (
     <div className="app">
@@ -57,12 +80,56 @@ const App: React.FC = () => {
         </div>
 
         <div className="app-topbar__right">
+          {/* Race Selector */}
+          <div className="app-topbar__race-selector">
+            <button
+              className="app-topbar__race-btn"
+              onClick={() => setShowRaceSelector(!showRaceSelector)}
+              title={`${uniqueRaces.length} races available`}
+              aria-label="Select race"
+            >
+              🏁 RACES ({uniqueRaces.length})
+            </button>
+            {showRaceSelector && (
+              <div className="app-topbar__race-dropdown">
+                <button
+                  className={`app-topbar__race-option ${selectedRaceKey === null ? 'active' : ''}`}
+                  onClick={() => handleRaceSelect(null)}
+                >
+                  📍 Latest Race
+                </button>
+                <div className="app-topbar__race-divider" />
+                {uniqueRaces.length > 0 ? (
+                  uniqueRaces.map(race => (
+                    <button
+                      key={race.session_key}
+                      className={`app-topbar__race-option ${
+                        selectedRaceKey === race.session_key ? 'active' : ''
+                      }`}
+                      onClick={() => handleRaceSelect(race.session_key)}
+                      title={new Date(race.date_start).toLocaleDateString()}
+                    >
+                      <span className="race-flag">🏁</span>
+                      <span className="race-name">{race.country_name}</span>
+                      <span className="race-circuit">{race.circuit_short_name}</span>
+                      <span className="race-session">{race.session_name}</span>
+                    </button>
+                  ))
+                ) : (
+                  <div className="app-topbar__no-races">
+                    Loading races...
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           {error && (
             <span
               className="app-topbar__error"
               title={error}
             >
-              ⚠ {error.includes('fetch') ? 'API UNAVAILABLE — DEMO MODE' : error}
+              ⚠ {error.includes('fetch') ? 'API UNAVAILABLE' : error}
             </span>
           )}
         </div>
@@ -76,21 +143,24 @@ const App: React.FC = () => {
         </div>
       ) : (
         <main className="app-main">
-          <div className="app-main__left">
+          {/* Left Sidebar */}
+          <aside className="app-sidebar app-sidebar--left">
             <WinnerProbability standings={standings} />
-          </div>
+          </aside>
 
-          <div className="app-main__center">
-            <TrackMap standings={standings} />
-          </div>
+          {/* Central Track Map */}
+          <section className="app-main__center">
+            <TrackMap standings={standings} raceCountry={session?.country_name} />
+          </section>
 
-          <div className="app-main__right">
+          {/* Right Sidebar */}
+          <aside className="app-sidebar app-sidebar--right">
             <TimingTower
               standings={standings}
               currentLap={currentLap}
               totalLaps={totalLaps}
             />
-          </div>
+          </aside>
         </main>
       )}
 

@@ -123,4 +123,19 @@ export interface PitNotification {
   position: number;
   lapNumber: number;
   timestamp: number;
+  compound?: 'SOFT' | 'MEDIUM' | 'HARD' | 'INTERMEDIATE' | 'WET';
+  oldCompound?: 'SOFT' | 'MEDIUM' | 'HARD' | 'INTERMEDIATE' | 'WET';
+  duration?: number;
+}
+
+export interface Race {
+  session_key: number;
+  meeting_key: number;
+  year: number;
+  country_name: string;
+  circuit_short_name: string;
+  session_name: string;
+  date_start: string;
+  date_end: string;
+  status: string;
 }
