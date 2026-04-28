@@ -3,7 +3,6 @@ import { useF1Data } from './hooks/useF1Data';
 import TimingTower from './components/TimingTower';
 import TrackMap from './components/TrackMap';
 import WinnerProbability from './components/WinnerProbability';
-import PitStopOverlay from './components/PitStopOverlay';
 import './App.css';
 
 const App: React.FC = () => {
@@ -12,11 +11,9 @@ const App: React.FC = () => {
     session,
     currentLap,
     totalLaps,
-    pitNotifications,
     isLive,
     isLoading,
     error,
-    dismissPitNotification,
     availableRaces,
     selectedRaceKey,
     setSelectedRaceKey,
@@ -164,11 +161,7 @@ const App: React.FC = () => {
         </main>
       )}
 
-      {/* ── Pit Stop Overlay ── */}
-      <PitStopOverlay
-        notifications={pitNotifications}
-        onDismiss={dismissPitNotification}
-      />
+
     </div>
   );
 };
