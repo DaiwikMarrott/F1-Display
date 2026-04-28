@@ -11,20 +11,24 @@ interface Props {
 const SVG_WIDTH = 900;
 const SVG_HEIGHT = 700;
 
-function getTrackPositions(count: number): { x: number; y: number }[] {
+function getTrackPositions(
+  count: number,
+  centerX: number = SVG_WIDTH / 2,
+  centerY: number = SVG_HEIGHT / 2,
+  innerRadius: number = 120,
+  outerRadius: number = 250
+): { x: number; y: number }[] {
   const positions: { x: number; y: number }[] = [];
-  const cx = SVG_WIDTH / 2;
-  const cy = SVG_HEIGHT / 2;
-  const rx = 300;
-  const ry = 250;
 
   for (let i = 0; i < count; i++) {
     const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
-    const rx2 = rx + Math.sin(angle * 3) * 50;
-    const ry2 = ry + Math.cos(angle * 2) * 40;
+    // Vary radius between inner and outer to create a donut-shaped distribution
+    const radiusVariation = innerRadius + (outerRadius - innerRadius) * (i % 3) / 3;
+    const radius = radiusVariation + Math.sin(angle * 2) * (outerRadius - innerRadius) * 0.15;
+    
     positions.push({
-      x: cx + rx2 * Math.cos(angle),
-      y: cy + ry2 * Math.sin(angle),
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
     });
   }
   return positions;
@@ -69,12 +73,18 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
       return normalizeLocations(locs, SVG_WIDTH, SVG_HEIGHT);
     }
     const sorted = [...standings].sort((a, b) => a.position - b.position);
-    const trackPos = getTrackPositions(sorted.length);
+    const trackPos = getTrackPositions(
+      sorted.length,
+      circuit?.centerX ?? SVG_WIDTH / 2,
+      circuit?.centerY ?? SVG_HEIGHT / 2,
+      circuit?.innerRadius ?? 120,
+      circuit?.outerRadius ?? 250
+    );
     return standings.map(s => {
       const idx = sorted.findIndex(d => d.driver.driver_number === s.driver.driver_number);
       return trackPos[idx] ?? { x: SVG_WIDTH / 2, y: SVG_HEIGHT / 2 };
     });
-  }, [standings, hasLocations]);
+  }, [standings, hasLocations, circuit]);
 
   return (
     <div className="track-map">
