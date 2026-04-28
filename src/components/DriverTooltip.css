@@ -1,0 +1,85 @@
+.driver-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: #0d0d1a;
+  border: 1px solid #2f2f3f;
+  border-radius: 8px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+  animation: tooltip-in 0.12s ease;
+}
+
+@keyframes tooltip-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.driver-tooltip__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: #141422;
+  border-bottom: 1px solid #2f2f3f;
+  border-radius: 8px 8px 0 0;
+  border-left: 4px solid;
+}
+
+.driver-tooltip__number {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.driver-tooltip__name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.driver-tooltip__team {
+  font-size: 11px;
+  color: #888899;
+  margin-top: 1px;
+}
+
+.driver-tooltip__body {
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.driver-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dt-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #666677;
+}
+
+.dt-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dt-temp {
+  font-size: 13px;
+}
+
+.compound-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}

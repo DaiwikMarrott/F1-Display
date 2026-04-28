@@ -1,0 +1,53 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --f1-bg:       #15151e;
+  --f1-card:     #1f1f2e;
+  --f1-border:   #2f2f3f;
+  --f1-red:      #e8002d;
+  --f1-gold:     #f5a623;
+  --f1-text:     #ffffff;
+  --f1-muted:    #888899;
+  --f1-dark:     #0a0a14;
+  --f1-purple:   #9100ff;
+}
+
+html,
+body {
+  background-color: var(--f1-bg);
+  color: var(--f1-text);
+  font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2f2f3f;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f5f;
+}

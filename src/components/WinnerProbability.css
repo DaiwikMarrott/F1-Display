@@ -1,0 +1,101 @@
+.win-prob {
+  background: #1f1f2e;
+  border: 1px solid #2f2f3f;
+  border-radius: 8px;
+  overflow: hidden;
+  width: 100%;
+  font-family: Arial, 'Helvetica Neue', sans-serif;
+}
+
+.win-prob__header {
+  padding: 10px 16px;
+  background: #0a0a14;
+  border-bottom: 2px solid #e8002d;
+}
+
+.win-prob__title {
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #e8002d;
+}
+
+.win-prob__list {
+  padding: 8px 0;
+}
+
+.win-prob__row {
+  display: grid;
+  grid-template-columns: 20px 1fr 100px 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #1a1a28;
+  transition: background 0.15s ease;
+}
+
+.win-prob__row:last-child {
+  border-bottom: none;
+}
+
+.win-prob__row:hover {
+  background: #252535;
+}
+
+.win-prob__rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: #666677;
+  text-align: center;
+}
+
+.win-prob__driver-info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.win-prob__acronym {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.win-prob__team {
+  font-size: 10px;
+  color: #666677;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.win-prob__bar-container {
+  height: 6px;
+  background: #2f2f3f;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.win-prob__bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  opacity: 0.9;
+}
+
+.win-prob__pct {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.win-prob__footer {
+  padding: 8px 16px;
+  background: #0d0d1a;
+  border-top: 1px solid #2f2f3f;
+  font-size: 10px;
+  color: #444455;
+  text-align: center;
+}

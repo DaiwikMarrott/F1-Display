@@ -1,0 +1,210 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #15151e;
+}
+
+/* ── Top Bar ────────────────────────────────────────────── */
+.app-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 56px;
+  background: #0a0a14;
+  border-bottom: 3px solid #e8002d;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-topbar__logo {
+  display: flex;
+  align-items: center;
+}
+
+.app-topbar__logo img {
+  height: 28px;
+  width: auto;
+}
+
+.app-topbar__logo-text {
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -1px;
+  background: #e8002d;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+
+.app-topbar__divider {
+  width: 1px;
+  height: 28px;
+  background: #2f2f3f;
+}
+
+.app-topbar__session {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-topbar__race-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.app-topbar__session-type {
+  font-size: 11px;
+  color: #888899;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.app-topbar__center {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-topbar__live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(232, 0, 45, 0.15);
+  border: 1px solid #e8002d;
+  color: #e8002d;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 4px 10px;
+  border-radius: 4px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #e8002d;
+  border-radius: 50%;
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+.app-topbar__demo-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: #2f2f3f;
+  color: #888899;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+}
+
+.app-topbar__lap-counter {
+  font-size: 13px;
+  font-weight: 700;
+  color: #f5a623;
+  letter-spacing: 1px;
+}
+
+.app-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-topbar__error {
+  font-size: 11px;
+  color: #e8002d;
+  max-width: 300px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ── Main Layout ────────────────────────────────────────── */
+.app-main {
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  grid-template-rows: 1fr;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main__left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app-main__center {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-main__right {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Loading ─────────────────────────────────────────────── */
+.app-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 16px;
+  color: #888899;
+}
+
+.app-loading__spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #2f2f3f;
+  border-top-color: #e8002d;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.app-loading__text {
+  font-size: 14px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #888899;
+}
+
+/* ── Responsive ──────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .app-main {
+    grid-template-columns: 260px 1fr 300px;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+  }
+}
