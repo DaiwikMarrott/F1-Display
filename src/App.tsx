@@ -27,12 +27,14 @@ const App: React.FC = () => {
 
   const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
 
-  // Get unique races, sorted by date
+  // Get unique races (one per meeting), sorted by date
   const uniqueRaces = useMemo(() => {
-    const seen = new Set<number>();
+    const seen = new Set<string>();
     const filtered = availableRaces.filter(race => {
-      if (seen.has(race.session_key)) return false;
-      seen.add(race.session_key);
+      // Use country + circuit as unique identifier for each race meeting
+      const raceId = `${race.country_name}_${race.circuit_short_name}`;
+      if (seen.has(raceId)) return false;
+      seen.add(raceId);
       return true;
     });
     return filtered.sort((a, b) => 

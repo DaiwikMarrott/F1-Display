@@ -145,7 +145,7 @@ export function useF1Data(): F1DataState {
       // 1. Fetch all races for the current year
       let sessionsResp: Session[] = [];
       try {
-        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=2024`);
+        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=2026`);
       } catch (e) {
         console.warn('Failed to fetch sessions:', e);
       }
