@@ -278,11 +278,26 @@
 
 /* ── Main Layout ────────────────────────────────────────── */
 .app-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-main__standings {
+  width: 100%;
+  min-height: 0;
+  flex-shrink: 0;
+  max-height: 45%;
+}
+
+.app-main__content {
   display: grid;
   grid-template-columns: 280px 1fr 340px;
   grid-template-rows: 1fr;
   gap: 16px;
-  padding: 16px;
   flex: 1;
   min-height: 0;
 }
@@ -345,7 +360,7 @@
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1400px) {
-  .app-main {
+  .app-main__content {
     grid-template-columns: 240px 1fr 320px;
     gap: 12px;
     padding: 12px;
@@ -363,6 +378,11 @@
 
 @media (max-width: 1000px) {
   .app-main {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .app-main__content {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
   }
@@ -371,6 +391,10 @@
   .app-sidebar--right {
     min-width: 100%;
     max-width: none;
+  }
+
+  .app-main__standings {
+    max-height: 50%;
   }
 
   .app-topbar {

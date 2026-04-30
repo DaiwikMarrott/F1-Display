@@ -1,0 +1,531 @@
+.live-standings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #e8002d;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(232, 0, 45, 0.15);
+  min-height: 500px;
+  font-family: 'Monaco', 'Courier New', monospace;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.live-standings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 12px;
+  border-bottom: 2px solid rgba(232, 0, 45, 0.3);
+}
+
+.live-standings__title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #e8002d;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(232, 0, 45, 0.3);
+}
+
+.live-standings__race-info {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.race-info__lap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #00ff88;
+  font-weight: 600;
+}
+
+.lap-label {
+  color: #888899;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.lap-current {
+  font-weight: 900;
+  font-size: 16px;
+}
+
+.lap-separator {
+  color: #555566;
+}
+
+.lap-total {
+  color: #888899;
+  font-size: 12px;
+}
+
+.race-info__remaining {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #ffaa00;
+  font-weight: 600;
+}
+
+.remaining-label {
+  color: #888899;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.remaining-count {
+  font-weight: 900;
+  font-size: 14px;
+}
+
+/* ── Progress Bar ────────────────────────────────────────────── */
+.live-standings__progress {
+  width: 100%;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e8002d 0%, #ff4444 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(232, 0, 45, 0.6);
+}
+
+/* ── Standings List ────────────────────────────────────────────── */
+.live-standings__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.live-standings__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.live-standings__list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.live-standings__list::-webkit-scrollbar-thumb {
+  background: rgba(232, 0, 45, 0.4);
+  border-radius: 3px;
+}
+
+.live-standings__list::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 0, 45, 0.6);
+}
+
+/* ── Standings Row ────────────────────────────────────────────── */
+.standings-row {
+  display: grid;
+  grid-template-columns: 50px 4px 1fr 90px 70px 80px auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(232, 0, 45, 0.2);
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.standings-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.05), transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.standings-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(232, 0, 45, 0.4);
+  transform: translateX(4px);
+}
+
+.standings-row--leader {
+  background: linear-gradient(90deg, rgba(232, 0, 45, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 2px solid rgba(232, 0, 45, 0.5);
+  box-shadow: 0 0 12px rgba(232, 0, 45, 0.2);
+}
+
+.standings-row--leader .standings-row__position-badge {
+  background: linear-gradient(135deg, #e8002d 0%, #ff4444 100%);
+  color: white;
+  border: none;
+}
+
+.standings-row--leader .standings-row__position-badge .position-number {
+  color: white;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+/* Animation for position changes */
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px) translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px) translateX(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+}
+
+.standings-row--animate-up,
+.standings-row--animate-down {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.standings-row--animate-down {
+  animation: slideInDown 0.6s ease-out;
+}
+
+/* ── Position Badge ────────────────────────────────────────────── */
+.standings-row__position-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  position: relative;
+  background: rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+
+.position-number {
+  font-weight: 900;
+  font-size: 18px;
+  color: inherit;
+}
+
+.position-change {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  font-size: 14px;
+  font-weight: 900;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #1a1a2e;
+  border: 2px solid;
+}
+
+.position-change--up {
+  color: #00ff88;
+  border-color: #00ff88;
+  animation: popUp 0.4s ease-out;
+}
+
+.position-change--down {
+  color: #ff6b6b;
+  border-color: #ff6b6b;
+  animation: popUp 0.4s ease-out;
+}
+
+@keyframes popUp {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(-10deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* ── Team Bar ────────────────────────────────────────────── */
+.standings-row__team-bar {
+  width: 100%;
+  height: 100%;
+  border-radius: 3px;
+  min-height: 36px;
+  opacity: 0.8;
+}
+
+/* ── Driver Info ────────────────────────────────────────────── */
+.standings-row__driver-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.driver-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.driver-number {
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.driver-name {
+  font-weight: 700;
+  color: #ffffff;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.driver-team {
+  font-size: 11px;
+  color: #888899;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.driver-footer {
+  font-size: 11px;
+  color: #00ff88;
+}
+
+.gap-to-leader {
+  font-weight: 600;
+}
+
+/* ── Lap Time ────────────────────────────────────────────── */
+.standings-row__laptime {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.laptime-label {
+  font-size: 10px;
+  color: #888899;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.laptime-value {
+  font-weight: 700;
+  color: #00ff88;
+  font-size: 12px;
+  font-family: 'Monaco', monospace;
+  position: relative;
+}
+
+.laptime-value.fastest {
+  color: #ffaa00;
+  font-weight: 900;
+}
+
+.fl-badge {
+  font-size: 8px;
+  background: #ffaa00;
+  color: #000;
+  padding: 2px 4px;
+  border-radius: 2px;
+  margin-left: 4px;
+  font-weight: 900;
+}
+
+/* ── Tire Info ────────────────────────────────────────────── */
+.standings-row__tire {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tire-compound {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: white;
+  font-size: 13px;
+}
+
+.compound-soft {
+  background: #e81846;
+  border: 2px solid #ff6b6b;
+}
+
+.compound-medium {
+  background: #ffd300;
+  color: #000;
+  border: 2px solid #ffff00;
+}
+
+.compound-hard {
+  background: #f3f3f3;
+  color: #000;
+  border: 2px solid #ffffff;
+}
+
+.compound-intermediate {
+  background: #00ff88;
+  color: #000;
+  border: 2px solid #00ff88;
+}
+
+.compound-wet {
+  background: #0093cc;
+  border: 2px solid #00d2ff;
+}
+
+.tire-age {
+  font-size: 10px;
+  color: #888899;
+  font-weight: 600;
+  min-width: 40px;
+  text-align: right;
+}
+
+/* ── Pit Stops ────────────────────────────────────────────── */
+.standings-row__pitstops {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 50px;
+}
+
+.pitstops-label {
+  font-size: 10px;
+  color: #888899;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.pitstops-count {
+  font-weight: 900;
+  font-size: 16px;
+  color: #ffaa00;
+}
+
+/* ── Win Probability ────────────────────────────────────────────── */
+.standings-row__winprob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 70px;
+}
+
+.winprob-bar {
+  width: 50px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.winprob-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.winprob-value {
+  font-size: 10px;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ── More Drivers Indicator ────────────────────────────────────────────── */
+.live-standings__more {
+  text-align: center;
+  padding: 12px;
+  font-size: 11px;
+  color: #888899;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-top: 1px solid rgba(232, 0, 45, 0.2);
+}
+
+/* ── Responsive Design ────────────────────────────────────────────── */
+@media (max-width: 1400px) {
+  .standings-row {
+    grid-template-columns: 44px 4px 1fr 80px 60px;
+    gap: 6px;
+  }
+
+  .standings-row__pitstops,
+  .standings-row__winprob {
+    display: none;
+  }
+}
+
+@media (max-width: 1000px) {
+  .standings-row {
+    grid-template-columns: 40px 4px 1fr 70px;
+    gap: 4px;
+  }
+
+  .standings-row__tire {
+    gap: 4px;
+  }
+
+  .tire-compound {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .laptime-value {
+    font-size: 11px;
+  }
+
+  .driver-name {
+    font-size: 12px;
+  }
+}

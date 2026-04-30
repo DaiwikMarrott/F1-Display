@@ -3,6 +3,7 @@ import { useF1Data } from './hooks/useF1Data';
 import TimingTower from './components/TimingTower';
 import TrackMap from './components/TrackMap';
 import WinnerProbability from './components/WinnerProbability';
+import LiveStandings from './components/LiveStandings';
 import './App.css';
 
 const App: React.FC = () => {
@@ -142,24 +143,36 @@ const App: React.FC = () => {
         </div>
       ) : (
         <main className="app-main">
-          {/* Left Sidebar */}
-          <aside className="app-sidebar app-sidebar--left">
-            <WinnerProbability standings={standings} />
-          </aside>
-
-          {/* Central Track Map */}
-          <section className="app-main__center">
-            <TrackMap standings={standings} raceCountry={session?.country_name} />
-          </section>
-
-          {/* Right Sidebar */}
-          <aside className="app-sidebar app-sidebar--right">
-            <TimingTower
+          {/* Live Standings - Full Width */}
+          <section className="app-main__standings">
+            <LiveStandings
               standings={standings}
               currentLap={currentLap}
               totalLaps={totalLaps}
             />
-          </aside>
+          </section>
+
+          {/* Traditional 3-Column Layout */}
+          <div className="app-main__content">
+            {/* Left Sidebar */}
+            <aside className="app-sidebar app-sidebar--left">
+              <WinnerProbability standings={standings} />
+            </aside>
+
+            {/* Central Track Map */}
+            <section className="app-main__center">
+              <TrackMap standings={standings} raceCountry={session?.country_name} />
+            </section>
+
+            {/* Right Sidebar */}
+            <aside className="app-sidebar app-sidebar--right">
+              <TimingTower
+                standings={standings}
+                currentLap={currentLap}
+                totalLaps={totalLaps}
+              />
+            </aside>
+          </div>
         </main>
       )}
 
