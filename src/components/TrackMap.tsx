@@ -13,8 +13,8 @@ const SVG_HEIGHT = 700;
 
 /**
  * Calculate driver positions along the track based on their standing.
- * Leader is positioned ahead, with other drivers positioned progressively behind
- * following the track path in a realistic lap progression.
+ * Leader is positioned ahead, with other drivers distributed around the track
+ * following the circuit shape for realistic lap progression visualization.
  */
 function getTrackPositions(
   standings: DriverStanding[],
@@ -28,20 +28,18 @@ function getTrackPositions(
 
   // Sort standings by position to calculate track progression
   const sorted = [...standings].sort((a, b) => a.position - b.position);
+  const totalDrivers = sorted.length;
 
   sorted.forEach((standing, idx) => {
-    // Position represents progress along the track
-    // P1 gets the "front" position, P2 is slightly behind, etc.
-    // Distribute drivers along the track with spacing
-    const driverGapLaps = 0.5; // Gap between drivers in laps (as a fraction of total)
-    const progressAlongTrack = (idx * driverGapLaps) % 1; // Normalize to 0-1
+    // Distribute drivers evenly around the track
+    // Each driver gets an angle based on their position relative to total drivers
+    // This creates even spacing around the circle
+    const angleStep = (2 * Math.PI) / Math.max(totalDrivers, 1);
+    const angle = idx * angleStep - Math.PI / 2; // Start from top
     
-    // Convert progress to angle around the track (starting from top, going clockwise)
-    const angle = progressAlongTrack * 2 * Math.PI - Math.PI / 2;
-    
-    // Position varies between inner and outer radius for visual interest
-    // but mostly stays on the racing line (outer radius primarily)
-    const radiusFactor = 0.7 + 0.3 * Math.sin(idx); // Varies between 0.4 and 1.0
+    // Position mostly stays on the racing line (outer radius primarily)
+    // with slight variation for visual interest
+    const radiusFactor = 0.75 + 0.25 * Math.sin(idx * 0.5); // Varies between 0.5 and 1.0
     const radius = innerRadius + (outerRadius - innerRadius) * radiusFactor;
     
     positions.set(standing.driver.driver_number, {

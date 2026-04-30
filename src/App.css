@@ -278,19 +278,13 @@
 
 /* ── Main Layout ────────────────────────────────────────── */
 .app-main {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 280px 1fr 340px;
+  grid-template-rows: 1fr;
   gap: 16px;
   padding: 16px;
   flex: 1;
   min-height: 0;
-}
-
-.app-main__standings {
-  width: 100%;
-  min-height: 0;
-  flex-shrink: 0;
-  max-height: 45%;
 }
 
 .app-main__content {
@@ -298,8 +292,8 @@
   grid-template-columns: 280px 1fr 340px;
   grid-template-rows: 1fr;
   gap: 16px;
-  flex: 1;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .app-sidebar {
@@ -307,6 +301,24 @@
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  overflow-y: auto;
+}
+
+.app-sidebar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.app-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(232, 0, 45, 0.3);
+  border-radius: 3px;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(232, 0, 45, 0.5);
 }
 
 .app-sidebar--left {
@@ -363,7 +375,6 @@
   .app-main__content {
     grid-template-columns: 240px 1fr 320px;
     gap: 12px;
-    padding: 12px;
   }
 
   .app-sidebar--left {
@@ -378,8 +389,7 @@
 
 @media (max-width: 1000px) {
   .app-main {
-    flex-direction: column;
-    gap: 12px;
+    grid-template-columns: 1fr;
   }
 
   .app-main__content {
@@ -391,10 +401,6 @@
   .app-sidebar--right {
     min-width: 100%;
     max-width: none;
-  }
-
-  .app-main__standings {
-    max-height: 50%;
   }
 
   .app-topbar {

@@ -143,20 +143,16 @@ const App: React.FC = () => {
         </div>
       ) : (
         <main className="app-main">
-          {/* Live Standings - Full Width */}
-          <section className="app-main__standings">
-            <LiveStandings
-              standings={standings}
-              currentLap={currentLap}
-              totalLaps={totalLaps}
-            />
-          </section>
-
           {/* Traditional 3-Column Layout */}
           <div className="app-main__content">
             {/* Left Sidebar */}
             <aside className="app-sidebar app-sidebar--left">
               <WinnerProbability standings={standings} />
+              <LiveStandings
+                standings={standings}
+                currentLap={currentLap}
+                totalLaps={totalLaps}
+              />
             </aside>
 
             {/* Central Track Map */}
