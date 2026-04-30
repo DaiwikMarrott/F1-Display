@@ -11,54 +11,46 @@ interface Props {
 const SVG_WIDTH = 900;
 const SVG_HEIGHT = 700;
 
+/**
+ * Calculate driver positions along the track based on their standing.
+ * Leader is positioned ahead, with other drivers positioned progressively behind
+ * following the track path in a realistic lap progression.
+ */
 function getTrackPositions(
-  count: number,
-  centerX: number = SVG_WIDTH / 2,
-  centerY: number = SVG_HEIGHT / 2,
-  innerRadius: number = 120,
-  outerRadius: number = 250
-): { x: number; y: number }[] {
-  const positions: { x: number; y: number }[] = [];
+  standings: DriverStanding[],
+  circuit: any | null
+): Map<number, { x: number; y: number }> {
+  const positions = new Map<number, { x: number; y: number }>();
+  const centerX = circuit?.centerX ?? SVG_WIDTH / 2;
+  const centerY = circuit?.centerY ?? SVG_HEIGHT / 2;
+  const innerRadius = circuit?.innerRadius ?? 120;
+  const outerRadius = circuit?.outerRadius ?? 250;
 
-  for (let i = 0; i < count; i++) {
-    const angle = (i / count) * 2 * Math.PI - Math.PI / 2;
-    // Vary radius between inner and outer to create a donut-shaped distribution
-    const radiusVariation = innerRadius + (outerRadius - innerRadius) * (i % 3) / 3;
-    const radius = radiusVariation + Math.sin(angle * 2) * (outerRadius - innerRadius) * 0.15;
+  // Sort standings by position to calculate track progression
+  const sorted = [...standings].sort((a, b) => a.position - b.position);
+
+  sorted.forEach((standing, idx) => {
+    // Position represents progress along the track
+    // P1 gets the "front" position, P2 is slightly behind, etc.
+    // Distribute drivers along the track with spacing
+    const driverGapLaps = 0.5; // Gap between drivers in laps (as a fraction of total)
+    const progressAlongTrack = (idx * driverGapLaps) % 1; // Normalize to 0-1
     
-    positions.push({
+    // Convert progress to angle around the track (starting from top, going clockwise)
+    const angle = progressAlongTrack * 2 * Math.PI - Math.PI / 2;
+    
+    // Position varies between inner and outer radius for visual interest
+    // but mostly stays on the racing line (outer radius primarily)
+    const radiusFactor = 0.7 + 0.3 * Math.sin(idx); // Varies between 0.4 and 1.0
+    const radius = innerRadius + (outerRadius - innerRadius) * radiusFactor;
+    
+    positions.set(standing.driver.driver_number, {
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle),
     });
-  }
-  return positions;
-}
-
-function normalizeLocations(
-  locs: (any | null)[],
-  width: number,
-  height: number
-): { x: number; y: number }[] {
-  const validLocs = locs.filter((l): l is any => l !== null);
-  if (validLocs.length === 0) return locs.map(() => ({ x: 0, y: 0 }));
-
-  const xs = validLocs.map(l => l.x);
-  const ys = validLocs.map(l => l.y);
-  const minX = Math.min(...xs);
-  const maxX = Math.max(...xs);
-  const minY = Math.min(...ys);
-  const maxY = Math.max(...ys);
-  const rangeX = maxX - minX || 1;
-  const rangeY = maxY - minY || 1;
-  const padding = 60;
-
-  return locs.map(l => {
-    if (!l) return { x: width / 2, y: height / 2 };
-    return {
-      x: padding + ((l.x - minX) / rangeX) * (width - padding * 2),
-      y: padding + ((l.y - minY) / rangeY) * (height - padding * 2),
-    };
   });
+
+  return positions;
 }
 
 const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
@@ -67,23 +59,42 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
 
   const trackSvgPath = circuit?.svgPath || null;
 
-  const driverPositions = useMemo(() => {
+  const driverPositionsMap = useMemo(() => {
     if (hasLocations) {
-      const locs = standings.map(s => s.location);
-      return normalizeLocations(locs, SVG_WIDTH, SVG_HEIGHT);
+      // If we have real location data, use it
+      const posMap = new Map<number, { x: number; y: number }>();
+      const locs = standings.map(s => s.location).filter((l): l is any => l !== null);
+      
+      if (locs.length === 0) {
+        return getTrackPositions(standings, circuit);
+      }
+
+      const xs = locs.map(l => l.x);
+      const ys = locs.map(l => l.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const rangeX = maxX - minX || 1;
+      const rangeY = maxY - minY || 1;
+      const padding = 60;
+
+      standings.forEach(s => {
+        const loc = s.location;
+        if (loc) {
+          posMap.set(s.driver.driver_number, {
+            x: padding + ((loc.x - minX) / rangeX) * (SVG_WIDTH - padding * 2),
+            y: padding + ((loc.y - minY) / rangeY) * (SVG_HEIGHT - padding * 2),
+          });
+        } else {
+          posMap.set(s.driver.driver_number, { x: SVG_WIDTH / 2, y: SVG_HEIGHT / 2 });
+        }
+      });
+      return posMap;
     }
-    const sorted = [...standings].sort((a, b) => a.position - b.position);
-    const trackPos = getTrackPositions(
-      sorted.length,
-      circuit?.centerX ?? SVG_WIDTH / 2,
-      circuit?.centerY ?? SVG_HEIGHT / 2,
-      circuit?.innerRadius ?? 120,
-      circuit?.outerRadius ?? 250
-    );
-    return standings.map(s => {
-      const idx = sorted.findIndex(d => d.driver.driver_number === s.driver.driver_number);
-      return trackPos[idx] ?? { x: SVG_WIDTH / 2, y: SVG_HEIGHT / 2 };
-    });
+    
+    // Use simulated positions based on standings and track layout
+    return getTrackPositions(standings, circuit);
   }, [standings, hasLocations, circuit]);
 
   return (
@@ -137,8 +148,8 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
         ) : null}
 
         {/* Driver dots */}
-        {standings.map((s, idx) => {
-          const pos = driverPositions[idx];
+        {standings.map((s) => {
+          const pos = driverPositionsMap.get(s.driver.driver_number);
           if (!pos) return null;
           const teamColor = `#${s.driver.team_colour || 'ffffff'}`;
           const isLeader = s.position === 1;
