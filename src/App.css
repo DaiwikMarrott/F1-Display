@@ -372,6 +372,11 @@
 
 /* ── Responsive ──────────────────────────────────────────── */
 @media (max-width: 1400px) {
+  .app-main {
+    grid-template-columns: 240px 1fr 320px;
+    gap: 12px;
+  }
+
   .app-main__content {
     grid-template-columns: 240px 1fr 320px;
     gap: 12px;
@@ -390,11 +395,15 @@
 @media (max-width: 1000px) {
   .app-main {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
   }
 
   .app-main__content {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    gap: 16px;
   }
 
   .app-sidebar--left,
