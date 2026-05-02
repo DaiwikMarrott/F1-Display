@@ -173,7 +173,13 @@ export function useF1Data(): F1DataState {
             sessionListCacheRef.current = sessionsResp;
           }
         } catch (e) {
-          console.warn('Failed to fetch sessions:', e);
+          console.warn('Failed to fetch sessions, injecting fallback DEMO races:', e);
+          sessionsResp = [
+            { session_key: 9158, session_name: "Race", date_start: "2024-03-02T15:00:00", date_end: "2024-03-02T17:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1229, location: "Sakhir", country_key: 36, country_code: "BRN", country_name: "Bahrain", circuit_key: 63, circuit_short_name: "Sakhir" },
+            { session_key: 9166, session_name: "Race", date_start: "2024-03-09T17:00:00", date_end: "2024-03-09T19:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1230, location: "Jeddah", country_key: 153, country_code: "KSA", country_name: "Saudi Arabia", circuit_key: 149, circuit_short_name: "Jeddah" },
+            { session_key: 9173, session_name: "Race", date_start: "2024-03-24T04:00:00", date_end: "2024-03-24T06:00:00", gmt_offset: "11:00", session_type: "Race", meeting_key: 1231, location: "Melbourne", country_key: 5, country_code: "AUS", country_name: "Australia", circuit_key: 10, circuit_short_name: "Melbourne" },
+          ] as any[];
+          sessionListCacheRef.current = sessionsResp;
         }
       }
 
