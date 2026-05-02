@@ -314,15 +314,17 @@ export function useAnalytics(
       const driverNum = standing.driver.driver_number;
       
       const tire = calculateTireAnalysis(standing, currentLap, totalLaps);
-      if (!tire) return; // Skip if tire analysis failed
-      
-      tireAnalysis.set(driverNum, tire);
+      if (tire) {
+        tireAnalysis.set(driverNum, tire);
+      }
       
       sectors.set(driverNum, calculateSectorData(standing, leaderLapTime, standings));
       
       gapTrends.set(driverNum, calculateGapTrend(standing, currentLap, totalLaps));
       
-      strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
+      if (tire) {
+        strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
+      }
       
       formData.set(driverNum, calculateDriverForm(standing, currentLap));
       

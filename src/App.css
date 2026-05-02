@@ -337,8 +337,8 @@
 /* Analytics Tabs */
 .app-analytics-tabs {
   display: flex;
-  gap: 2px;
-  padding: 8px 8px 0 8px;
+  gap: 1px;
+  padding: 6px 6px 0 6px;
   background: linear-gradient(180deg, #0a0a14 0%, #1a1a28 100%);
   border-bottom: 2px solid #e8002d;
   flex-shrink: 0;
@@ -346,20 +346,24 @@
 
 .app-analytics-tab {
   flex: 1;
-  padding: 8px 10px;
+  min-width: 0;
+  padding: 7px 6px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(232, 0, 45, 0.2);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   color: #888899;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.6px;
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
   position: relative;
   top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .app-analytics-tab:hover {
