@@ -397,7 +397,7 @@
   }
 }
 
-@media (max-width: 1000px) {
+@media (max-width: 768px) {
   .app-main {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
