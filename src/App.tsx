@@ -6,6 +6,7 @@ import TrackMap from './components/TrackMap';
 import WinnerProbability from './components/WinnerProbability';
 import LiveStandings from './components/LiveStandings';
 import TireStrategy from './components/TireStrategy';
+import SectorAnalysis from './components/SectorAnalysis';
 import './App.css';
 
 const App: React.FC = () => {
