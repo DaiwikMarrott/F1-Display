@@ -7,6 +7,7 @@ import WinnerProbability from './components/WinnerProbability';
 import LiveStandings from './components/LiveStandings';
 import TireStrategy from './components/TireStrategy';
 import SectorAnalysis from './components/SectorAnalysis';
+import GapAnalysis from './components/GapAnalysis';
 import './App.css';
 
 const App: React.FC = () => {
@@ -27,7 +28,7 @@ const App: React.FC = () => {
   const analytics = useAnalytics(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
-  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors'>('timing');
+  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors' | 'gaps'>('timing');
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -192,6 +193,13 @@ const App: React.FC = () => {
                 >
                   📊 SECTORS
                 </button>
+                <button 
+                  className={`app-analytics-tab ${analyticsPanelTab === 'gaps' ? 'active' : ''}`}
+                  onClick={() => setAnalyticsPanelTab('gaps')}
+                  title="Gap analysis and overtake predictions"
+                >
+                  🎯 GAPS
+                </button>
               </div>
 
               {/* Content based on selected tab */}
@@ -208,9 +216,16 @@ const App: React.FC = () => {
                   currentLap={currentLap}
                   totalLaps={totalLaps}
                 />
-              ) : (
+              ) : analyticsPanelTab === 'sectors' ? (
                 <SectorAnalysis
                   sectors={analytics.sectors}
+                  standings={standings}
+                  currentLap={currentLap}
+                  totalLaps={totalLaps}
+                />
+              ) : (
+                <GapAnalysis
+                  gapTrends={analytics.gapTrends}
                   standings={standings}
                   currentLap={currentLap}
                   totalLaps={totalLaps}
