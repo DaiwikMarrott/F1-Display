@@ -6,6 +6,7 @@ import './TrackMap.css';
 interface Props {
   standings: DriverStanding[];
   raceCountry?: string | null;
+  currentLap?: number;
 }
 
 const SVG_WIDTH = 900;
@@ -18,7 +19,8 @@ const SVG_HEIGHT = 700;
  */
 function getTrackPositions(
   standings: DriverStanding[],
-  circuit: any | null
+  circuit: any | null,
+  currentLap: number = 1
 ): Map<number, { x: number; y: number }> {
   const positions = new Map<number, { x: number; y: number }>();
   const centerX = circuit?.centerX ?? SVG_WIDTH / 2;
@@ -31,15 +33,16 @@ function getTrackPositions(
   const totalDrivers = sorted.length;
 
   sorted.forEach((standing, idx) => {
-    // Distribute drivers evenly around the track
-    // Each driver gets an angle based on their position relative to total drivers
-    // This creates even spacing around the circle
+    // Distribute drivers around the track based on their position
+    // Leader gets further ahead, others follow in sequence
     const angleStep = (2 * Math.PI) / Math.max(totalDrivers, 1);
-    const angle = idx * angleStep - Math.PI / 2; // Start from top
+    const positionOffset = standing.position - 1; // 0 for leader, 1 for 2nd, etc.
+    const lapOffset = (currentLap % 1) * 0.2; // Small animation within lap
+    const angle = (positionOffset + lapOffset) * angleStep - Math.PI / 2; // Start from top
     
     // Position mostly stays on the racing line (outer radius primarily)
-    // with slight variation for visual interest
-    const radiusFactor = 0.75 + 0.25 * Math.sin(idx * 0.5); // Varies between 0.5 and 1.0
+    // with slight variation based on driver position
+    const radiusFactor = 0.7 + 0.3 * Math.sin(positionOffset * 0.5);
     const radius = innerRadius + (outerRadius - innerRadius) * radiusFactor;
     
     positions.set(standing.driver.driver_number, {
@@ -51,11 +54,13 @@ function getTrackPositions(
   return positions;
 }
 
-const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
+const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) => {
   const circuit = raceCountry ? getCircuitByCountry(raceCountry) : null;
+  // Fallback to Miami circuit for better demo visualization
+  const displayCircuit = circuit || getCircuitByCountry('United States');
   const hasLocations = standings.some(s => s.location !== null);
 
-  const trackSvgPath = circuit?.svgPath || null;
+  const trackSvgPath = displayCircuit?.svgPath || null;
 
   const driverPositionsMap = useMemo(() => {
     if (hasLocations) {
@@ -64,7 +69,7 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
       const locs = standings.map(s => s.location).filter((l): l is any => l !== null);
       
       if (locs.length === 0) {
-        return getTrackPositions(standings, circuit);
+        return getTrackPositions(standings, displayCircuit, currentLap);
       }
 
       const xs = locs.map(l => l.x);
@@ -92,14 +97,14 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
     }
     
     // Use simulated positions based on standings and track layout
-    return getTrackPositions(standings, circuit);
-  }, [standings, hasLocations, circuit]);
+    return getTrackPositions(standings, displayCircuit, currentLap);
+  }, [standings, hasLocations, displayCircuit, currentLap]);
 
   return (
     <div className="track-map">
       <div className="track-map__header">
         <span className="track-map__title">
-          {circuit ? `${circuit.name}` : 'TRACK MAP'}
+          {displayCircuit ? `${displayCircuit.name}` : 'TRACK MAP'}
         </span>
         {!hasLocations && (
           <span className="track-map__demo-badge">SIMULATED POSITIONS</span>
@@ -115,93 +120,130 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry }) => {
         {/* Circuit background */}
         <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#15151e" />
 
-        {/* Track path */}
+        {/* Track path - much more visible now */}
         {trackSvgPath ? (
           <>
+            {/* Outer curbing - bright red */}
             <path
               d={trackSvgPath}
               fill="none"
-              stroke="#2f2f4f"
+              stroke="#ff3333"
               strokeWidth="40"
               strokeLinecap="round"
               strokeLinejoin="round"
+              opacity="0.8"
             />
+            {/* Mid asphalt - dark gray */}
             <path
               d={trackSvgPath}
               fill="none"
-              stroke="#3a3a5a"
+              stroke="#555566"
               strokeWidth="32"
               strokeLinecap="round"
               strokeLinejoin="round"
             />
+            {/* Racing line - bright yellow */}
             <path
               d={trackSvgPath}
               fill="none"
-              stroke="#252540"
-              strokeWidth="24"
+              stroke="#ffff00"
+              strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
+              strokeDasharray="10,5"
+              opacity="0.6"
             />
           </>
         ) : null}
 
-        {/* Driver dots */}
+        {/* Driver dots - now clearly visible */}
         {standings.map((s) => {
           const pos = driverPositionsMap.get(s.driver.driver_number);
           if (!pos) return null;
           const teamColor = `#${s.driver.team_colour || 'ffffff'}`;
           const isLeader = s.position === 1;
+          const dotRadius = isLeader ? 14 : 12;
 
           return (
             <g key={s.driver.driver_number}>
-              {/* Halo for leader */}
-              {isLeader && (
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r="18"
-                  fill="rgba(245,166,35,0.2)"
-                  stroke="#f5a623"
-                  strokeWidth="1"
-                />
-              )}
-
-              {/* Main dot */}
+              {/* Glow/shadow effect for visibility */}
               <circle
                 cx={pos.x}
                 cy={pos.y}
-                r={isLeader ? 12 : 10}
-                fill={teamColor}
-                stroke={isLeader ? '#f5a623' : '#000'}
-                strokeWidth={isLeader ? 2.5 : 1.5}
-                filter="drop-shadow(0 0 4px rgba(0,0,0,0.8))"
+                r={dotRadius + 6}
+                fill="rgba(0,0,0,0.5)"
+                filter="drop-shadow(0 0 8px rgba(0,0,0,0.9))"
               />
 
-              {/* Driver number */}
+              {/* Halo for leader */}
+              {isLeader && (
+                <>
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={dotRadius + 10}
+                    fill="none"
+                    stroke="#f5a623"
+                    strokeWidth="2"
+                    opacity="0.7"
+                  />
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r="20"
+                    fill="rgba(245,166,35,0.1)"
+                    stroke="#f5a623"
+                    strokeWidth="1"
+                    opacity="0.5"
+                  />
+                </>
+              )}
+
+              {/* Main dot - larger and more visible */}
+              <circle
+                cx={pos.x}
+                cy={pos.y}
+                r={dotRadius}
+                fill={teamColor}
+                stroke={isLeader ? '#f5a623' : '#ffffff'}
+                strokeWidth={isLeader ? 3 : 2}
+                filter="drop-shadow(0 0 6px rgba(0,0,0,0.8))"
+              />
+
+              {/* Driver number - larger and more readable */}
               <text
-                x={pos.x + 14}
-                y={pos.y + 5}
+                x={pos.x + 16}
+                y={pos.y + 4}
                 fill="#ffffff"
-                fontSize="11"
-                fontWeight="700"
+                fontSize="12"
+                fontWeight="900"
                 fontFamily="Arial, sans-serif"
-                style={{ textShadow: '0 0 4px #000', pointerEvents: 'none' }}
+                style={{ textShadow: '0 2px 4px #000', pointerEvents: 'none' }}
               >
                 {s.driver.driver_number}
               </text>
 
-              {/* Position badge */}
+              {/* Position badge - more prominent */}
+              <rect
+                x={pos.x - 9}
+                y={pos.y - 20}
+                width="18"
+                height="16"
+                fill={teamColor}
+                rx="2"
+                filter="drop-shadow(0 0 4px rgba(0,0,0,0.8))"
+              />
               <text
-                x={pos.x - 2}
-                y={pos.y - 12}
+                x={pos.x}
+                y={pos.y - 7}
                 fill="#ffffff"
-                fontSize="9"
+                fontSize="10"
                 fontWeight="900"
                 fontFamily="Arial, sans-serif"
                 textAnchor="middle"
-                style={{ textShadow: '0 0 3px #000', pointerEvents: 'none' }}
+                style={{ textShadow: '0 1px 2px #000', pointerEvents: 'none' }}
               >
-                P{s.position}
+                {s.position}
               </text>
             </g>
           );

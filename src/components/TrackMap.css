@@ -1,13 +1,13 @@
 .track-map {
   background: #15151e;
-  border: 2px solid #2f2f3f;
+  border: 2px solid #e8002d;
   border-radius: 12px;
   overflow: hidden;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 8px 32px rgba(232, 0, 45, 0.4), inset 0 0 20px rgba(232, 0, 45, 0.1);
 }
 
 .track-map__header {

@@ -157,7 +157,7 @@ const App: React.FC = () => {
 
             {/* Central Track Map */}
             <section className="app-main__center">
-              <TrackMap standings={standings} raceCountry={session?.country_name} />
+              <TrackMap standings={standings} raceCountry={session?.country_name} currentLap={currentLap} />
             </section>
 
             {/* Right Sidebar */}

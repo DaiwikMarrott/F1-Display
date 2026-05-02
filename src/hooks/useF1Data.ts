@@ -69,21 +69,31 @@ const DEMO_DRIVERS: Driver[] = [
   { driver_number: 87, broadcast_name: 'O BEARMAN',    full_name: 'Oliver Bearman',     name_acronym: 'BEA', team_name: 'Haas F1 Team',     team_colour: 'B6BABD', session_key: 0 },
 ];
 
-function buildDemoStandings(): DriverStanding[] {
+function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
   const compounds: Stint['compound'][] = ['SOFT', 'MEDIUM', 'HARD', 'SOFT', 'MEDIUM'];
   const raw = DEMO_DRIVERS.map((driver, idx) => {
+    // Simulate realistic gaps that grow as laps progress
     const position = idx + 1;
-    const gapSec = idx === 0 ? 0 : idx * 1.2 + Math.random() * 3;
-    const lastLap = 90 + Math.random() * 5;
+    const baseGap = idx === 0 ? 0 : idx * 1.1;
+    // Gap grows slightly as race progresses (some drivers drop back)
+    const lapFactor = (currentLap - 14) * 0.1;
+    const gapSec = baseGap + lapFactor + Math.random() * 1.5;
+    
+    // Simulate lap times that vary slightly
+    const baseLapTime = 90 + idx * 0.3;
+    const lapVariation = Math.sin(currentLap * 0.3 + idx) * 0.8;
+    const lastLap = baseLapTime + lapVariation;
+    
     const compound = compounds[idx % compounds.length];
-    const tireAge = Math.floor(Math.random() * 25) + 1;
+    const tireAge = Math.floor((currentLap - 10) / 2) + (idx % 3);
+    
     return {
       driver,
       position,
       gapToLeader: formatGap(gapSec),
       lastLap,
-      bestLap: lastLap - Math.random() * 0.5,
-      isFastestLap: idx === 3,
+      bestLap: baseLapTime - 0.8 + Math.random() * 0.2,
+      isFastestLap: idx === 3 && currentLap > 20,
       currentStint: {
         driver_number: driver.driver_number,
         stint_number: 2,
@@ -94,7 +104,7 @@ function buildDemoStandings(): DriverStanding[] {
         session_key: 0,
         meeting_key: 0,
       },
-      tireAge,
+      tireAge: Math.max(1, tireAge),
       pitCount: idx % 3 === 0 ? 1 : 0,
       location: null,
       winProbability: 0,
@@ -183,7 +193,7 @@ export function useF1Data(): F1DataState {
         if (demoLapRef.current < 57) demoLapRef.current += 1;
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
-        const demoStandings = buildDemoStandings();
+        const demoStandings = buildDemoStandings(demoLapRef.current);
         setStandings(demoStandings);
         setSession(null);
         setIsLoading(false);
@@ -216,7 +226,7 @@ export function useF1Data(): F1DataState {
         if (demoLapRef.current < 57) demoLapRef.current += 1;
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
-        setStandings(buildDemoStandings());
+        setStandings(buildDemoStandings(demoLapRef.current));
         setIsLoading(false);
         return;
       }
@@ -370,7 +380,7 @@ export function useF1Data(): F1DataState {
         if (demoLapRef.current < 57) demoLapRef.current += 1;
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
-        setStandings(buildDemoStandings());
+        setStandings(buildDemoStandings(demoLapRef.current));
       }
     } finally {
       setIsLoading(false);
