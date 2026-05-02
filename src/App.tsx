@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useF1Data } from './hooks/useF1Data';
 import useAnalytics from './hooks/useAnalytics';
+import { useIncidentDetection } from './hooks/useIncidentDetection';
 import TimingTower from './components/TimingTower';
 import TrackMap from './components/TrackMap';
 import WinnerProbability from './components/WinnerProbability';
@@ -10,7 +11,12 @@ import SectorAnalysis from './components/SectorAnalysis';
 import GapAnalysis from './components/GapAnalysis';
 import StrategyAdvisor from './components/StrategyAdvisor';
 import FormMomentum from './components/FormMomentum';
+import TelemetryPanel from './components/TelemetryPanel';
+import IncidentTracker from './components/IncidentTracker';
+import PitStopOverlay from './components/PitStopOverlay';
 import './App.css';
+
+type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents';
 
 const App: React.FC = () => {
   const {
@@ -24,13 +30,16 @@ const App: React.FC = () => {
     availableRaces,
     selectedRaceKey,
     setSelectedRaceKey,
+    pitNotifications,
+    dismissPitNotification,
   } = useF1Data();
 
   // Analytics engine
   const analytics = useAnalytics(standings, currentLap, totalLaps);
+  const incidents = useIncidentDetection(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
-  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form'>('timing');
+  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<AnalyticsTab>('timing');
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -42,13 +51,12 @@ const App: React.FC = () => {
   const uniqueRaces = useMemo(() => {
     const seen = new Set<string>();
     const filtered = availableRaces.filter(race => {
-      // Use country + circuit as unique identifier for each race meeting
       const raceId = `${race.country_name}_${race.circuit_short_name}`;
       if (seen.has(raceId)) return false;
       seen.add(raceId);
       return true;
     });
-    return filtered.sort((a, b) => 
+    return filtered.sort((a, b) =>
       new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
     );
   }, [availableRaces]);
@@ -56,6 +64,29 @@ const App: React.FC = () => {
   const handleRaceSelect = (sessionKey: number | null) => {
     setSelectedRaceKey(sessionKey);
     setShowRaceSelector(false);
+  };
+
+  const renderAnalyticsPanel = () => {
+    switch (analyticsPanelTab) {
+      case 'timing':
+        return <TimingTower standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'tires':
+        return <TireStrategy tireAnalysis={analytics.tireAnalysis} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'sectors':
+        return <SectorAnalysis sectors={analytics.sectors} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'gaps':
+        return <GapAnalysis gapTrends={analytics.gapTrends} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'strategy':
+        return <StrategyAdvisor strategies={analytics.strategies} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'form':
+        return <FormMomentum formData={analytics.formData} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'telemetry':
+        return <TelemetryPanel telemetry={analytics.telemetry} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'incidents':
+        return <IncidentTracker incidents={incidents} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      default:
+        return <TimingTower standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+    }
   };
 
   return (
@@ -113,9 +144,8 @@ const App: React.FC = () => {
                   uniqueRaces.map(race => (
                     <button
                       key={race.session_key}
-                      className={`app-topbar__race-option ${
-                        selectedRaceKey === race.session_key ? 'active' : ''
-                      }`}
+                      className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
+                        }`}
                       onClick={() => handleRaceSelect(race.session_key)}
                       title={new Date(race.date_start).toLocaleDateString()}
                     >
@@ -145,6 +175,12 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {/* ── Pit Stop Overlay ── */}
+      <PitStopOverlay
+        notifications={pitNotifications}
+        onDismiss={dismissPitNotification}
+      />
+
       {/* ── Main Content ── */}
       {isLoading && standings.length === 0 ? (
         <div className="app-loading">
@@ -153,7 +189,6 @@ const App: React.FC = () => {
         </div>
       ) : (
         <main className="app-main">
-          {/* Traditional 3-Column Layout */}
           <div className="app-main__content">
             {/* Left Sidebar */}
             <aside className="app-sidebar app-sidebar--left">
@@ -174,99 +209,33 @@ const App: React.FC = () => {
             <aside className="app-sidebar app-sidebar--right">
               {/* Analytics Tab Controls */}
               <div className="app-analytics-tabs">
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'timing' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('timing')}
-                  title="Live timing and gaps"
-                >
-                  ⏱ TIMING
-                </button>
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'tires' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('tires')}
-                  title="Tire strategy and degradation"
-                >
-                  🛞 TIRES
-                </button>
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'sectors' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('sectors')}
-                  title="Sector time analysis"
-                >
-                  📊 SECTORS
-                </button>
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'gaps' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('gaps')}
-                  title="Gap analysis and overtake predictions"
-                >
-                  🎯 GAPS
-                </button>
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'strategy' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('strategy')}
-                  title="Pit wall strategy recommendations"
-                >
-                  🧠 STRAT
-                </button>
-                <button 
-                  className={`app-analytics-tab ${analyticsPanelTab === 'form' ? 'active' : ''}`}
-                  onClick={() => setAnalyticsPanelTab('form')}
-                  title="Driver form and momentum analysis"
-                >
-                  📈 FORM
-                </button>
+                {([
+                  { key: 'timing', icon: '⏱', label: 'TIMING' },
+                  { key: 'tires', icon: '🛞', label: 'TIRES' },
+                  { key: 'sectors', icon: '📊', label: 'SECTORS' },
+                  { key: 'gaps', icon: '🎯', label: 'GAPS' },
+                  { key: 'strategy', icon: '🧠', label: 'STRAT' },
+                  { key: 'form', icon: '📈', label: 'FORM' },
+                  { key: 'telemetry', icon: '📡', label: 'TELEM' },
+                  { key: 'incidents', icon: '🚨', label: 'ALERTS' },
+                ] as { key: AnalyticsTab; icon: string; label: string }[]).map(tab => (
+                  <button
+                    key={tab.key}
+                    className={`app-analytics-tab ${analyticsPanelTab === tab.key ? 'active' : ''}`}
+                    onClick={() => setAnalyticsPanelTab(tab.key)}
+                    title={tab.label}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
               </div>
 
               {/* Content based on selected tab */}
-              {analyticsPanelTab === 'timing' ? (
-                <TimingTower
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              ) : analyticsPanelTab === 'tires' ? (
-                <TireStrategy
-                  tireAnalysis={analytics.tireAnalysis}
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              ) : analyticsPanelTab === 'sectors' ? (
-                <SectorAnalysis
-                  sectors={analytics.sectors}
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              ) : analyticsPanelTab === 'gaps' ? (
-                <GapAnalysis
-                  gapTrends={analytics.gapTrends}
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              ) : analyticsPanelTab === 'strategy' ? (
-                <StrategyAdvisor
-                  strategies={analytics.strategies}
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              ) : (
-                <FormMomentum
-                  formData={analytics.formData}
-                  standings={standings}
-                  currentLap={currentLap}
-                  totalLaps={totalLaps}
-                />
-              )}
+              {renderAnalyticsPanel()}
             </aside>
           </div>
         </main>
       )}
-
-
     </div>
   );
 };

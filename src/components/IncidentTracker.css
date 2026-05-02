@@ -1,0 +1,230 @@
+.incident-tracker {
+    background: #1a1a28;
+    border-radius: 0 0 10px 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.incident-tracker__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: linear-gradient(90deg, #0a0a14 0%, #1a1a28 100%);
+    border-bottom: 1px solid #2f2f3f;
+    flex-shrink: 0;
+}
+
+.incident-tracker__title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: #ffffff;
+    margin: 0;
+}
+
+.incident-tracker__lap {
+    font-size: 11px;
+    font-weight: 600;
+    color: #f5a623;
+    letter-spacing: 1px;
+}
+
+/* Active incident banner */
+.incident-tracker__active-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(232, 0, 45, 0.15);
+    border-bottom: 1px solid rgba(232, 0, 45, 0.3);
+    font-size: 11px;
+    font-weight: 700;
+    color: #e8002d;
+    letter-spacing: 1px;
+    animation: incidentPulse 2s ease-in-out infinite;
+}
+
+.incident-tracker__active-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e8002d;
+    animation: dotPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes incidentPulse {
+
+    0%,
+    100% {
+        background: rgba(232, 0, 45, 0.15);
+    }
+
+    50% {
+        background: rgba(232, 0, 45, 0.25);
+    }
+}
+
+@keyframes dotPulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
+}
+
+/* Incident list */
+.incident-tracker__list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.incident-tracker__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 40px 20px;
+    color: #888899;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+
+.incident-tracker__empty-icon {
+    font-size: 24px;
+}
+
+/* Incident cards */
+.incident-tracker__card {
+    background: #15151e;
+    border: 1px solid #2f2f3f;
+    border-left: 3px solid;
+    border-radius: 6px;
+    padding: 10px 12px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.incident-tracker__card:hover {
+    background: #1f1f2e;
+}
+
+.incident-tracker__card--active {
+    background: rgba(232, 0, 45, 0.05);
+    border-color: #e8002d;
+}
+
+.incident-tracker__card--resolved {
+    opacity: 0.75;
+}
+
+.incident-tracker__card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.incident-tracker__type {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.incident-tracker__type-icon {
+    font-size: 14px;
+}
+
+.incident-tracker__type-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 1px;
+}
+
+.incident-tracker__severity {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.incident-tracker__resolved-badge {
+    font-size: 9px;
+    font-weight: 700;
+    color: #39b54a;
+    letter-spacing: 1px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: rgba(57, 181, 74, 0.1);
+}
+
+.incident-tracker__description {
+    font-size: 11px;
+    color: #b0b0c0;
+    line-height: 1.4;
+    margin-bottom: 6px;
+}
+
+.incident-tracker__card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+}
+
+.incident-tracker__driver {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.incident-tracker__lap-badge {
+    color: #888899;
+    background: #2f2f3f;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.incident-tracker__time {
+    color: #666677;
+    font-size: 9px;
+    margin-left: auto;
+}
+
+.incident-tracker__section-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    font-size: 9px;
+    font-weight: 700;
+    color: #555566;
+    letter-spacing: 2px;
+    position: relative;
+}
+
+.incident-tracker__section-divider::before,
+.incident-tracker__section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #2f2f3f;
+    margin: 0 8px;
+}
