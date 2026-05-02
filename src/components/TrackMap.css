@@ -48,4 +48,5 @@
   display: block;
   background: #15151e;
   min-height: 500px;
+  max-height: 100%;
 }
