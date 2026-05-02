@@ -27,7 +27,7 @@ const App: React.FC = () => {
   const analytics = useAnalytics(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
-  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires'>('timing');
+  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors'>('timing');
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -185,6 +185,13 @@ const App: React.FC = () => {
                 >
                   🛞 TIRES
                 </button>
+                <button 
+                  className={`app-analytics-tab ${analyticsPanelTab === 'sectors' ? 'active' : ''}`}
+                  onClick={() => setAnalyticsPanelTab('sectors')}
+                  title="Sector time analysis"
+                >
+                  📊 SECTORS
+                </button>
               </div>
 
               {/* Content based on selected tab */}
@@ -194,9 +201,16 @@ const App: React.FC = () => {
                   currentLap={currentLap}
                   totalLaps={totalLaps}
                 />
-              ) : (
+              ) : analyticsPanelTab === 'tires' ? (
                 <TireStrategy
                   tireAnalysis={analytics.tireAnalysis}
+                  standings={standings}
+                  currentLap={currentLap}
+                  totalLaps={totalLaps}
+                />
+              ) : (
+                <SectorAnalysis
+                  sectors={analytics.sectors}
                   standings={standings}
                   currentLap={currentLap}
                   totalLaps={totalLaps}
