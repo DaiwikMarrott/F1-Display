@@ -47,26 +47,26 @@ function applyWinProbabilities(items: DriverStanding[], lapsRemaining: number): 
 }
 
 const DEMO_DRIVERS: Driver[] = [
-  { driver_number: 1,  broadcast_name: 'M VERSTAPPEN', full_name: 'Max Verstappen',     name_acronym: 'VER', team_name: 'Red Bull Racing', team_colour: '3671C6', session_key: 0 },
-  { driver_number: 16, broadcast_name: 'C LECLERC',    full_name: 'Charles Leclerc',    name_acronym: 'LEC', team_name: 'Ferrari',          team_colour: 'E8002D', session_key: 0 },
-  { driver_number: 44, broadcast_name: 'L HAMILTON',   full_name: 'Lewis Hamilton',     name_acronym: 'HAM', team_name: 'Ferrari',          team_colour: 'E8002D', session_key: 0 },
-  { driver_number: 63, broadcast_name: 'G RUSSELL',    full_name: 'George Russell',     name_acronym: 'RUS', team_name: 'Mercedes',         team_colour: '00D2BE', session_key: 0 },
-  { driver_number: 4,  broadcast_name: 'L NORRIS',     full_name: 'Lando Norris',       name_acronym: 'NOR', team_name: 'McLaren',          team_colour: 'FF8000', session_key: 0 },
-  { driver_number: 81, broadcast_name: 'O PIASTRI',    full_name: 'Oscar Piastri',      name_acronym: 'PIA', team_name: 'McLaren',          team_colour: 'FF8000', session_key: 0 },
-  { driver_number: 14, broadcast_name: 'F ALONSO',     full_name: 'Fernando Alonso',    name_acronym: 'ALO', team_name: 'Aston Martin',     team_colour: '358C75', session_key: 0 },
-  { driver_number: 18, broadcast_name: 'L STROLL',     full_name: 'Lance Stroll',       name_acronym: 'STR', team_name: 'Aston Martin',     team_colour: '358C75', session_key: 0 },
-  { driver_number: 10, broadcast_name: 'P GASLY',      full_name: 'Pierre Gasly',       name_acronym: 'GAS', team_name: 'Alpine',           team_colour: '0093CC', session_key: 0 },
-  { driver_number: 31, broadcast_name: 'E OCON',       full_name: 'Esteban Ocon',       name_acronym: 'OCO', team_name: 'Alpine',           team_colour: '0093CC', session_key: 0 },
-  { driver_number: 23, broadcast_name: 'A ALBON',      full_name: 'Alexander Albon',    name_acronym: 'ALB', team_name: 'Williams',         team_colour: '64C4FF', session_key: 0 },
-  { driver_number: 2,  broadcast_name: 'L SARGEANT',   full_name: 'Logan Sargeant',     name_acronym: 'SAR', team_name: 'Williams',         team_colour: '64C4FF', session_key: 0 },
-  { driver_number: 22, broadcast_name: 'Y TSUNODA',    full_name: 'Yuki Tsunoda',       name_acronym: 'TSU', team_name: 'RB',               team_colour: '6692FF', session_key: 0 },
-  { driver_number: 3,  broadcast_name: 'D RICCIARDO',  full_name: 'Daniel Ricciardo',   name_acronym: 'RIC', team_name: 'RB',               team_colour: '6692FF', session_key: 0 },
-  { driver_number: 20, broadcast_name: 'K MAGNUSSEN',  full_name: 'Kevin Magnussen',    name_acronym: 'MAG', team_name: 'Haas F1 Team',     team_colour: 'B6BABD', session_key: 0 },
-  { driver_number: 27, broadcast_name: 'N HULKENBERG', full_name: 'Nico Hülkenberg',    name_acronym: 'HUL', team_name: 'Haas F1 Team',     team_colour: 'B6BABD', session_key: 0 },
-  { driver_number: 24, broadcast_name: 'G ZHOU',       full_name: 'Guanyu Zhou',        name_acronym: 'ZHO', team_name: 'Kick Sauber',      team_colour: 'C92D4B', session_key: 0 },
-  { driver_number: 77, broadcast_name: 'V BOTTAS',     full_name: 'Valtteri Bottas',    name_acronym: 'BOT', team_name: 'Kick Sauber',      team_colour: 'C92D4B', session_key: 0 },
-  { driver_number: 55, broadcast_name: 'C SAINZ',      full_name: 'Carlos Sainz',       name_acronym: 'SAI', team_name: 'Williams',         team_colour: '64C4FF', session_key: 0 },
-  { driver_number: 87, broadcast_name: 'O BEARMAN',    full_name: 'Oliver Bearman',     name_acronym: 'BEA', team_name: 'Haas F1 Team',     team_colour: 'B6BABD', session_key: 0 },
+  { driver_number: 1, broadcast_name: 'M VERSTAPPEN', full_name: 'Max Verstappen', name_acronym: 'VER', team_name: 'Red Bull Racing', team_colour: '3671C6', session_key: 0 },
+  { driver_number: 16, broadcast_name: 'C LECLERC', full_name: 'Charles Leclerc', name_acronym: 'LEC', team_name: 'Ferrari', team_colour: 'E8002D', session_key: 0 },
+  { driver_number: 44, broadcast_name: 'L HAMILTON', full_name: 'Lewis Hamilton', name_acronym: 'HAM', team_name: 'Ferrari', team_colour: 'E8002D', session_key: 0 },
+  { driver_number: 63, broadcast_name: 'G RUSSELL', full_name: 'George Russell', name_acronym: 'RUS', team_name: 'Mercedes', team_colour: '00D2BE', session_key: 0 },
+  { driver_number: 4, broadcast_name: 'L NORRIS', full_name: 'Lando Norris', name_acronym: 'NOR', team_name: 'McLaren', team_colour: 'FF8000', session_key: 0 },
+  { driver_number: 81, broadcast_name: 'O PIASTRI', full_name: 'Oscar Piastri', name_acronym: 'PIA', team_name: 'McLaren', team_colour: 'FF8000', session_key: 0 },
+  { driver_number: 14, broadcast_name: 'F ALONSO', full_name: 'Fernando Alonso', name_acronym: 'ALO', team_name: 'Aston Martin', team_colour: '358C75', session_key: 0 },
+  { driver_number: 18, broadcast_name: 'L STROLL', full_name: 'Lance Stroll', name_acronym: 'STR', team_name: 'Aston Martin', team_colour: '358C75', session_key: 0 },
+  { driver_number: 10, broadcast_name: 'P GASLY', full_name: 'Pierre Gasly', name_acronym: 'GAS', team_name: 'Alpine', team_colour: '0093CC', session_key: 0 },
+  { driver_number: 31, broadcast_name: 'E OCON', full_name: 'Esteban Ocon', name_acronym: 'OCO', team_name: 'Alpine', team_colour: '0093CC', session_key: 0 },
+  { driver_number: 23, broadcast_name: 'A ALBON', full_name: 'Alexander Albon', name_acronym: 'ALB', team_name: 'Williams', team_colour: '64C4FF', session_key: 0 },
+  { driver_number: 2, broadcast_name: 'L SARGEANT', full_name: 'Logan Sargeant', name_acronym: 'SAR', team_name: 'Williams', team_colour: '64C4FF', session_key: 0 },
+  { driver_number: 22, broadcast_name: 'Y TSUNODA', full_name: 'Yuki Tsunoda', name_acronym: 'TSU', team_name: 'RB', team_colour: '6692FF', session_key: 0 },
+  { driver_number: 3, broadcast_name: 'D RICCIARDO', full_name: 'Daniel Ricciardo', name_acronym: 'RIC', team_name: 'RB', team_colour: '6692FF', session_key: 0 },
+  { driver_number: 20, broadcast_name: 'K MAGNUSSEN', full_name: 'Kevin Magnussen', name_acronym: 'MAG', team_name: 'Haas F1 Team', team_colour: 'B6BABD', session_key: 0 },
+  { driver_number: 27, broadcast_name: 'N HULKENBERG', full_name: 'Nico Hülkenberg', name_acronym: 'HUL', team_name: 'Haas F1 Team', team_colour: 'B6BABD', session_key: 0 },
+  { driver_number: 24, broadcast_name: 'G ZHOU', full_name: 'Guanyu Zhou', name_acronym: 'ZHO', team_name: 'Kick Sauber', team_colour: 'C92D4B', session_key: 0 },
+  { driver_number: 77, broadcast_name: 'V BOTTAS', full_name: 'Valtteri Bottas', name_acronym: 'BOT', team_name: 'Kick Sauber', team_colour: 'C92D4B', session_key: 0 },
+  { driver_number: 55, broadcast_name: 'C SAINZ', full_name: 'Carlos Sainz', name_acronym: 'SAI', team_name: 'Williams', team_colour: '64C4FF', session_key: 0 },
+  { driver_number: 87, broadcast_name: 'O BEARMAN', full_name: 'Oliver Bearman', name_acronym: 'BEA', team_name: 'Haas F1 Team', team_colour: 'B6BABD', session_key: 0 },
 ];
 
 function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
@@ -78,15 +78,15 @@ function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
     // Gap grows slightly as race progresses (some drivers drop back)
     const lapFactor = (currentLap - 14) * 0.1;
     const gapSec = baseGap + lapFactor + Math.random() * 1.5;
-    
+
     // Simulate lap times that vary slightly
     const baseLapTime = 90 + idx * 0.3;
     const lapVariation = Math.sin(currentLap * 0.3 + idx) * 0.8;
     const lastLap = baseLapTime + lapVariation;
-    
+
     const compound = compounds[idx % compounds.length];
     const tireAge = Math.floor((currentLap - 10) / 2) + (idx % 3);
-    
+
     return {
       driver,
       position,
@@ -155,7 +155,8 @@ export function useF1Data(): F1DataState {
       // 1. Fetch all races for the current year
       let sessionsResp: Session[] = [];
       try {
-        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=2026`);
+        const currentYear = new Date().getFullYear();
+        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=${currentYear}`);
       } catch (e) {
         console.warn('Failed to fetch sessions:', e);
       }
@@ -180,7 +181,7 @@ export function useF1Data(): F1DataState {
           // Fallback: get the most recent session from all sessions
           if (sessionsResp.length > 0) {
             // Find the session with the latest date
-            targetSession = sessionsResp.reduce((latest, current) => 
+            targetSession = sessionsResp.reduce((latest, current) =>
               new Date(current.date_start) > new Date(latest.date_start) ? current : latest
             );
           }

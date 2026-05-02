@@ -1,4 +1,3 @@
-import React from 'react';
 import type { TelemetryData } from '../types/analytics';
 import './TelemetryPanel.css';
 
@@ -41,7 +40,7 @@ export default function TelemetryPanel({ telemetry, standings, currentLap, total
 
       <div className="telemetry-panel__container">
         {rows.map(({ telemetry: t, standing }) => {
-          const code = standing.driver.driver_number_display || `D${t.driver_number}`;
+          const code = standing.driver.name_acronym || `D${t.driver_number}`;
           const speedPercent = Math.min(100, Math.round((t.topSpeed / maxSpeed) * 100));
           const accelPercent = Math.min(100, Math.max(0, Math.round(t.acceleration)));
           const gPercent = Math.min(100, Math.round((t.gForce / 6) * 100));
