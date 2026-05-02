@@ -140,6 +140,10 @@ export function useF1Data(): F1DataState {
   const [availableRaces, setAvailableRaces] = useState<Session[]>([]);
   const [selectedRaceKey, setSelectedRaceKey] = useState<number | null>(null);
 
+  // Caching references
+  const sessionListCacheRef = useRef<Session[] | null>(null);
+  const raceDataCacheRef = useRef<Map<number, { standings: DriverStanding[], maxLap: number, totalLaps: number }>>(new Map());
+
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
@@ -151,14 +155,26 @@ export function useF1Data(): F1DataState {
   }, []);
 
   const fetchData = useCallback(async () => {
+    // Determine if switching to a new race (optimistic loading state)
+    if (selectedRaceKey && session && selectedRaceKey !== session.session_key && !raceDataCacheRef.current.has(selectedRaceKey)) {
+      setIsLoading(true);
+    }
+
     try {
-      // 1. Fetch all races for the current year
+      // 1. Fetch or use cached races for the current year
       let sessionsResp: Session[] = [];
-      try {
-        const currentYear = new Date().getFullYear();
-        sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=${currentYear}`);
-      } catch (e) {
-        console.warn('Failed to fetch sessions:', e);
+      if (sessionListCacheRef.current) {
+        sessionsResp = sessionListCacheRef.current;
+      } else {
+        try {
+          const currentYear = new Date().getFullYear();
+          sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=${currentYear}`);
+          if (sessionsResp.length > 0) {
+            sessionListCacheRef.current = sessionsResp;
+          }
+        } catch (e) {
+          console.warn('Failed to fetch sessions:', e);
+        }
       }
 
       if (sessionsResp.length > 0) {
@@ -204,8 +220,21 @@ export function useF1Data(): F1DataState {
       setSession(targetSession);
       const sk = targetSession.session_key;
       const isRace = targetSession.session_type === 'Race';
+      const isLiveSession = targetSession.status === 'started' || targetSession.status === 'active';
 
-      // 3. Fetch all race data in parallel
+      // 3. Stale-while-revalidate: check cache for complete races
+      if (!isLiveSession && raceDataCacheRef.current.has(sk)) {
+        const cached = raceDataCacheRef.current.get(sk)!;
+        setStandings(cached.standings);
+        setCurrentLap(cached.maxLap);
+        setTotalLaps(cached.totalLaps);
+        setIsLive(false);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
+
+      // 4. Fetch all race data in parallel
       const [drivers, rawPositions, laps, stints, pits, locations] = await Promise.allSettled([
         fetchJSON<Driver[]>(`${BASE_URL}/drivers?session_key=${sk}`),
         fetchJSON<Position[]>(`${BASE_URL}/position?session_key=${sk}`),
@@ -370,8 +399,18 @@ export function useF1Data(): F1DataState {
       });
 
       const finalStandings = applyWinProbabilities(newStandings, lapsRemaining);
+
+      // Update cache explicitly via current ref mapping
+      if (!isLiveSession && driversData !== DEMO_DRIVERS) {
+        raceDataCacheRef.current.set(sk, {
+          standings: finalStandings,
+          maxLap,
+          totalLaps: isRace ? 57 : totalLaps,
+        });
+      }
+
       setStandings(finalStandings);
-      setIsLive(targetSession.status === 'started' || targetSession.status === 'active');
+      setIsLive(isLiveSession);
       setError(null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
