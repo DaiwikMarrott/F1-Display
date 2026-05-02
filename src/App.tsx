@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { useF1Data } from './hooks/useF1Data';
+import useAnalytics from './hooks/useAnalytics';
 import TimingTower from './components/TimingTower';
 import TrackMap from './components/TrackMap';
 import WinnerProbability from './components/WinnerProbability';
 import LiveStandings from './components/LiveStandings';
+import TireStrategy from './components/TireStrategy';
 import './App.css';
 
 const App: React.FC = () => {
@@ -20,7 +22,11 @@ const App: React.FC = () => {
     setSelectedRaceKey,
   } = useF1Data();
 
+  // Analytics engine
+  const analytics = useAnalytics(standings, currentLap, totalLaps);
+
   const [showRaceSelector, setShowRaceSelector] = useState(false);
+  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires'>('timing');
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -162,11 +168,39 @@ const App: React.FC = () => {
 
             {/* Right Sidebar */}
             <aside className="app-sidebar app-sidebar--right">
-              <TimingTower
-                standings={standings}
-                currentLap={currentLap}
-                totalLaps={totalLaps}
-              />
+              {/* Analytics Tab Controls */}
+              <div className="app-analytics-tabs">
+                <button 
+                  className={`app-analytics-tab ${analyticsPanelTab === 'timing' ? 'active' : ''}`}
+                  onClick={() => setAnalyticsPanelTab('timing')}
+                  title="Live timing and gaps"
+                >
+                  ⏱ TIMING
+                </button>
+                <button 
+                  className={`app-analytics-tab ${analyticsPanelTab === 'tires' ? 'active' : ''}`}
+                  onClick={() => setAnalyticsPanelTab('tires')}
+                  title="Tire strategy and degradation"
+                >
+                  🛞 TIRES
+                </button>
+              </div>
+
+              {/* Content based on selected tab */}
+              {analyticsPanelTab === 'timing' ? (
+                <TimingTower
+                  standings={standings}
+                  currentLap={currentLap}
+                  totalLaps={totalLaps}
+                />
+              ) : (
+                <TireStrategy
+                  tireAnalysis={analytics.tireAnalysis}
+                  standings={standings}
+                  currentLap={currentLap}
+                  totalLaps={totalLaps}
+                />
+              )}
             </aside>
           </div>
         </main>
