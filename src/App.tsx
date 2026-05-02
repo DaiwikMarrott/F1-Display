@@ -14,9 +14,12 @@ import FormMomentum from './components/FormMomentum';
 import TelemetryPanel from './components/TelemetryPanel';
 import IncidentTracker from './components/IncidentTracker';
 import PitStopOverlay from './components/PitStopOverlay';
+import HeadToHead from './components/HeadToHead';
+import TeamRadio from './components/TeamRadio';
+import WeatherPanel from './components/WeatherPanel';
 import './App.css';
 
-type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents';
+type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
 
 const App: React.FC = () => {
   const {
@@ -84,6 +87,12 @@ const App: React.FC = () => {
         return <TelemetryPanel telemetry={analytics.telemetry} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
       case 'incidents':
         return <IncidentTracker incidents={incidents} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
+      case 'h2h':
+        return <HeadToHead standings={standings} analytics={analytics} />;
+      case 'radio':
+        return <TeamRadio standings={standings} currentLap={currentLap} incidents={incidents} />;
+      case 'weather':
+        return <WeatherPanel currentLap={currentLap} totalLaps={totalLaps} />;
       default:
         return <TimingTower standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
     }
@@ -208,24 +217,29 @@ const App: React.FC = () => {
             {/* Right Sidebar */}
             <aside className="app-sidebar app-sidebar--right">
               {/* Analytics Tab Controls */}
-              <div className="app-analytics-tabs">
+              <div className="app-analytics-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingBottom: '6px' }}>
                 {([
                   { key: 'timing', icon: '⏱', label: 'TIMING' },
                   { key: 'tires', icon: '🛞', label: 'TIRES' },
-                  { key: 'sectors', icon: '📊', label: 'SECTORS' },
+                  { key: 'sectors', icon: '📊', label: 'SECTOR' },
                   { key: 'gaps', icon: '🎯', label: 'GAPS' },
                   { key: 'strategy', icon: '🧠', label: 'STRAT' },
                   { key: 'form', icon: '📈', label: 'FORM' },
                   { key: 'telemetry', icon: '📡', label: 'TELEM' },
-                  { key: 'incidents', icon: '🚨', label: 'ALERTS' },
+                  { key: 'incidents', icon: '🚨', label: 'ALERT' },
+                  { key: 'h2h', icon: '⚔️', label: 'H2H' },
+                  { key: 'radio', icon: '🎧', label: 'RADIO' },
+                  { key: 'weather', icon: '☁️', label: 'WTHR' },
                 ] as { key: AnalyticsTab; icon: string; label: string }[]).map(tab => (
                   <button
                     key={tab.key}
                     className={`app-analytics-tab ${analyticsPanelTab === tab.key ? 'active' : ''}`}
                     onClick={() => setAnalyticsPanelTab(tab.key)}
                     title={tab.label}
+                    style={{ flex: '1 1 20%', minWidth: '60px', padding: '6px 2px', fontSize: '9px' }}
                   >
-                    {tab.icon} {tab.label}
+                    <span style={{ fontSize: '11px', marginBottom: '2px', display: 'block' }}>{tab.icon}</span>
+                    {tab.label}
                   </button>
                 ))}
               </div>
