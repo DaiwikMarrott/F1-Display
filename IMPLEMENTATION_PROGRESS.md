@@ -1,49 +1,35 @@
 # F1 HUD Analytics Implementation Progress
 
-## Current Status: Features 1-4 Complete and Pushed
+## Current Status: Features 1-5 Complete and Pushed
 
 ### Completed Features
 
 1. Feature 1: Tire Strategy and Degradation Panel
 - Commit: d5665bd
-- Files:
-  - src/types/analytics.ts
-  - src/hooks/useAnalytics.ts
-  - src/components/TireStrategy.tsx
-  - src/components/TireStrategy.css
-  - src/App.tsx
-  - src/App.css
-- Outcome:
-  - Tire compound, age, degradation, pit window, and condition visualized for all drivers.
 
 2. Feature 2: Sector Analysis Dashboard
 - Commit: 4ceb969
-- Files:
-  - src/components/SectorAnalysis.tsx
-  - src/components/SectorAnalysis.css
-  - src/App.tsx
-- Outcome:
-  - S1/S2/S3 times, deltas vs leader, and sector status visualization added.
 
 3. Feature 3: Gap Analysis and Overtake Predictor
 - Commit: 472104c
-- Files:
-  - src/components/GapAnalysis.tsx
-  - src/components/GapAnalysis.css
-  - src/App.tsx
-- Outcome:
-  - Gap trend, DRS window status, overtake probability, and timing hints added.
 
-4. Feature 4: Strategy Advisor
-- Commit: pending (working tree currently includes this feature)
+4. Feature 4: Strategy Advisor and Analytics Hardening
+- Commit: 37945d5
+- Includes:
+  - Strategy advisor panel and STRAT tab
+  - Null-safe analytics map population for missing tire stints
+  - Compact sidebar tab sizing improvements
+
+5. Feature 5: Form and Momentum Panel
+- Commit: pending (in working tree before this commit)
 - Files:
-  - src/components/StrategyAdvisor.tsx
-  - src/components/StrategyAdvisor.css
+  - src/components/FormMomentum.tsx
+  - src/components/FormMomentum.css
   - src/App.tsx
-  - src/App.css
-  - src/hooks/useAnalytics.ts
-- Outcome:
-  - Per-driver strategy actions (pit now, stay out, monitor, push), risk, confidence, predicted finish, and optimal stop info shown.
+- Includes:
+  - Driver trend (improving, stable, declining)
+  - Momentum score visualization
+  - Consistency, average of last 5 laps, peak performance window
 
 ## Current Analytics Tabs
 - TIMING
@@ -51,61 +37,40 @@
 - SECTORS
 - GAPS
 - STRAT
+- FORM
 
-Note:
-- Tab layout was compacted to support five tabs in 340px sidebar with ellipsis handling.
+## Verified Working
+- Tire panel
+- Sector panel
+- Gap panel
+- Strategy panel
+- Form/Momentum panel
+- Tab switching across all panels
+- No TypeScript or lint errors from workspace diagnostics
 
-## Important Robustness Fixes
-
-1. Null safety for tire stint data
-- File: src/hooks/useAnalytics.ts
-- Change:
-  - Drivers without current tire stint no longer get dropped from all analytics maps.
-  - Tire-dependent maps (tire analysis, strategy) are conditionally populated.
-  - Non-tire maps (sectors, gaps, form, telemetry) still populate for all drivers.
-
-2. API rate limit behavior
-- OpenF1 can return HTTP 429.
-- Demo mode fallback continues to populate UI, so development remains functional.
-
-## Next Features to Build
-
-### Feature 5: Form and Momentum Panel
-- Data already available in useAnalytics via formData map.
-- Build:
-  - src/components/FormMomentum.tsx
-  - src/components/FormMomentum.css
-  - Add tab integration in src/App.tsx
+## Remaining Features
 
 ### Feature 6: Telemetry Panel
-- Data already available in useAnalytics via telemetry map.
+- Data source ready in useAnalytics via telemetry map.
 - Build:
   - src/components/TelemetryPanel.tsx
   - src/components/TelemetryPanel.css
-  - Add tab integration in src/App.tsx
+  - Add TELEMETRY tab and integration in src/App.tsx
 
 ### Feature 7: Incidents Overlay
-- incidents array exists in analytics state but currently static.
+- incidents exists in analytics state but is currently static.
 - Build:
-  - incident generation/fetch logic
-  - incident panel or on-track overlay component
-  - visual priority handling (SC, VSC, DNF, crash)
+  - incident event generation/fetch
+  - incident timeline or overlay UI
+  - severity and priority display (SC, VSC, DNF, crash, spin)
 
-## Verification Checklist
-- get_errors reports no TypeScript errors.
-- Browser checks performed for:
-  - Tire panel rendering
-  - Sector panel rendering
-  - Gap panel rendering
-  - Strategy panel rendering
-- Tab switching works across all current analytics panels.
-
-## Repo/Run Info
-- Repo root: /Users/daiwikmarrott/Desktop/SFU/Projects/F1 Heads_up_display/F1-Display
+## Operational Notes
+- OpenF1 API can return HTTP 429.
+- Demo mode fallback keeps the app usable during rate limits.
 - Dev server: http://localhost:5174/
-- Main branch: origin/main
+- Repo: /Users/daiwikmarrott/Desktop/SFU/Projects/F1 Heads_up_display/F1-Display
 
 ## If Context Resets
-1. Read FEATURE_PLAN.md for full feature roadmap.
-2. Read this file (IMPLEMENTATION_PROGRESS.md) for exact completed state.
-3. Start with Feature 5 implementation and commit after end-to-end validation.
+1. Read FEATURE_PLAN.md for full roadmap and definitions.
+2. Read this file for exact completion state.
+3. Continue with Feature 6 (Telemetry) and commit after browser validation.

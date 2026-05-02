@@ -1,0 +1,192 @@
+.form-momentum {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 8px;
+  height: 100%;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0a0a14 0%, #1a1a28 100%);
+}
+
+.form-momentum__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border: 2px solid #e8002d;
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(232, 0, 45, 0.1) 0%, rgba(0, 0, 0, 0.3) 100%);
+}
+
+.form-momentum__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8002d;
+  letter-spacing: 1.2px;
+}
+
+.form-momentum__lap {
+  font-size: 10px;
+  color: #f5a623;
+  font-weight: 600;
+}
+
+.form-momentum__container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-momentum__card {
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(232, 0, 45, 0.2);
+  background: rgba(16, 16, 28, 0.9);
+}
+
+.form-momentum__driver {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  gap: 2px;
+}
+
+.form-momentum__position {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f5a623;
+}
+
+.form-momentum__code {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.form-momentum__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-momentum__trend {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.form-momentum__trend--improving {
+  color: #0b1220;
+  background: linear-gradient(90deg, #22c55e 0%, #86efac 100%);
+}
+
+.form-momentum__trend--stable {
+  color: #d1d5db;
+  background: linear-gradient(90deg, #4b5563 0%, #9ca3af 100%);
+}
+
+.form-momentum__trend--declining {
+  color: #ffffff;
+  background: linear-gradient(90deg, #dc2626 0%, #fb7185 100%);
+}
+
+.form-momentum__momentum {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-momentum__metric-label {
+  font-size: 8px;
+  color: #8f95ad;
+  text-transform: uppercase;
+}
+
+.form-momentum__metric-value {
+  font-size: 9px;
+  font-weight: 700;
+  color: #f8fafc;
+  min-width: 28px;
+  text-align: right;
+}
+
+.form-momentum__bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.form-momentum__bar-center {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.form-momentum__bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.form-momentum__bar-fill.positive {
+  background: linear-gradient(90deg, #f59e0b 0%, #22c55e 100%);
+}
+
+.form-momentum__bar-fill.negative {
+  background: linear-gradient(90deg, #dc2626 0%, #f97316 100%);
+}
+
+.form-momentum__details {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.form-momentum__detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.form-momentum__detail-label {
+  font-size: 8px;
+  color: #8f95ad;
+  text-transform: uppercase;
+}
+
+.form-momentum__detail-value {
+  font-size: 9px;
+  color: #f8fafc;
+  font-weight: 600;
+}
+
+.form-momentum__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 180px;
+  color: #80879f;
+  font-size: 12px;
+  border: 1px dashed rgba(128, 135, 159, 0.4);
+  border-radius: 8px;
+}

@@ -9,6 +9,7 @@ import TireStrategy from './components/TireStrategy';
 import SectorAnalysis from './components/SectorAnalysis';
 import GapAnalysis from './components/GapAnalysis';
 import StrategyAdvisor from './components/StrategyAdvisor';
+import FormMomentum from './components/FormMomentum';
 import './App.css';
 
 const App: React.FC = () => {
@@ -29,7 +30,7 @@ const App: React.FC = () => {
   const analytics = useAnalytics(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
-  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy'>('timing');
+  const [analyticsPanelTab, setAnalyticsPanelTab] = useState<'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form'>('timing');
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -208,6 +209,13 @@ const App: React.FC = () => {
                 >
                   🧠 STRAT
                 </button>
+                <button 
+                  className={`app-analytics-tab ${analyticsPanelTab === 'form' ? 'active' : ''}`}
+                  onClick={() => setAnalyticsPanelTab('form')}
+                  title="Driver form and momentum analysis"
+                >
+                  📈 FORM
+                </button>
               </div>
 
               {/* Content based on selected tab */}
@@ -238,9 +246,16 @@ const App: React.FC = () => {
                   currentLap={currentLap}
                   totalLaps={totalLaps}
                 />
-              ) : (
+              ) : analyticsPanelTab === 'strategy' ? (
                 <StrategyAdvisor
                   strategies={analytics.strategies}
+                  standings={standings}
+                  currentLap={currentLap}
+                  totalLaps={totalLaps}
+                />
+              ) : (
+                <FormMomentum
+                  formData={analytics.formData}
                   standings={standings}
                   currentLap={currentLap}
                   totalLaps={totalLaps}
