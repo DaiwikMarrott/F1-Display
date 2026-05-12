@@ -88,7 +88,7 @@ const App: React.FC = () => {
       case 'incidents':
         return <IncidentTracker incidents={incidents} standings={standings} currentLap={currentLap} totalLaps={totalLaps} />;
       case 'h2h':
-        return <HeadToHead standings={standings} analytics={analytics} />;
+        return <HeadToHead standings={standings} analytics={analytics} availableRaces={availableRaces} />;
       case 'radio':
         return <TeamRadio standings={standings} currentLap={currentLap} incidents={incidents} />;
       case 'weather':
