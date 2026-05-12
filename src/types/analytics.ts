@@ -47,11 +47,23 @@ export interface StrategyRecommendation {
   driver_number: number;
   currentStrategy: 'aggressive' | 'conservative' | 'neutral';
   recommendedAction: 'pit-now' | 'stay-out' | 'monitor' | 'push';
+  fuelBurnPerLap: number;
+  estimatedFuelRemaining: number;
+  fuelSavingPotential: number;
   optimalNextStop: {
     lapNumber: number;
     compound: 'SOFT' | 'MEDIUM' | 'HARD';
     gainSeconds: number; // estimated improvement vs staying out
   };
+  whatIfScenarios: Array<{
+    label: string;
+    action: 'pit-now' | 'stay-out' | 'push';
+    compound: 'SOFT' | 'MEDIUM' | 'HARD';
+    pitLap: number;
+    projectedFinishPosition: number;
+    projectedTimeGain: number;
+    confidence: number;
+  }>;
   predictedFinishPosition: number;
   riskLevel: 'low' | 'medium' | 'high';
   confidence: number; // 0-100

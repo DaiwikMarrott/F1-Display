@@ -180,6 +180,9 @@ function calculateStrategyRecommendation(
 ): StrategyRecommendation {
   const lapsRemaining = totalLaps - currentLap;
   const tireLapsRemaining = tireAnalysis.maxAge - tireAnalysis.age;
+  const fuelBurnPerLap = Number((1.55 + (standing.position <= 5 ? 0.08 : 0.14) + (standing.tireAge > 15 ? 0.04 : 0)).toFixed(2));
+  const estimatedFuelRemaining = Number(Math.max(0, lapsRemaining * fuelBurnPerLap).toFixed(1));
+  const fuelSavingPotential = Number(Math.max(0, (standing.position <= 3 ? 0.08 : 0.05) * lapsRemaining).toFixed(1));
   
   // Determine current strategy
   let currentStrategy: 'aggressive' | 'conservative' | 'neutral' = 'neutral';
@@ -199,6 +202,36 @@ function calculateStrategyRecommendation(
   
   // Predict finish position
   const predictedFinish = Math.max(1, standing.position + Math.round((Math.random() - 0.5) * 3));
+
+  const pitNowScenario = {
+    label: 'Pit now',
+    action: 'pit-now' as const,
+    compound: tireAnalysis.age > 15 ? 'HARD' as const : 'MEDIUM' as const,
+    pitLap: currentLap,
+    projectedFinishPosition: Math.max(1, standing.position + (standing.position <= 3 ? 0 : 1) - Math.round(Math.random() * 1)),
+    projectedTimeGain: Number((tireAnalysis.performanceLoss * 0.45 + fuelSavingPotential * 0.2).toFixed(1)),
+    confidence: Math.round(74 + Math.random() * 16),
+  };
+
+  const stayOutScenario = {
+    label: 'Stay out',
+    action: 'stay-out' as const,
+    compound: tireAnalysis.compound,
+    pitLap: Math.min(totalLaps, currentLap + Math.max(1, Math.ceil(tireLapsRemaining / 2))),
+    projectedFinishPosition: Math.max(1, standing.position + Math.round((standing.tireAge > 18 ? 2 : 1) + Math.random() * 2)),
+    projectedTimeGain: Number(Math.max(0, tireAnalysis.performanceLoss * 0.15).toFixed(1)),
+    confidence: Math.round(68 + Math.random() * 18),
+  };
+
+  const pushScenario = {
+    label: 'Push',
+    action: 'push' as const,
+    compound: tireAnalysis.compound,
+    pitLap: Math.min(totalLaps, currentLap + 1),
+    projectedFinishPosition: Math.max(1, standing.position - Math.round(Math.random() * 2)),
+    projectedTimeGain: Number((Math.max(0, tireAnalysis.performanceLoss * 0.25) + fuelSavingPotential * 0.1).toFixed(1)),
+    confidence: Math.round(60 + Math.random() * 20),
+  };
   
   // Risk assessment
   let riskLevel: 'low' | 'medium' | 'high' = 'low';
@@ -209,11 +242,15 @@ function calculateStrategyRecommendation(
     driver_number: standing.driver.driver_number,
     currentStrategy,
     recommendedAction,
+    fuelBurnPerLap,
+    estimatedFuelRemaining,
+    fuelSavingPotential,
     optimalNextStop: {
       lapNumber: optimalLap,
       compound: nextCompound as any,
       gainSeconds,
     },
+    whatIfScenarios: [pitNowScenario, stayOutScenario, pushScenario],
     predictedFinishPosition: predictedFinish,
     riskLevel,
     confidence: 70 + Math.random() * 25,

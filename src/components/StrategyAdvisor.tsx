@@ -56,6 +56,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
           const driverCode = standing.driver.driver_number_display || `D${strategy.driver_number}`;
           const actionClass = ACTION_CLASS[strategy.recommendedAction];
           const confidence = Math.max(0, Math.min(100, Math.round(strategy.confidence)));
+          const fuelRemain = Math.max(0, strategy.estimatedFuelRemaining);
 
           return (
             <div className="strategy-advisor__card" key={strategy.driver_number}>
@@ -83,6 +84,18 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                   <span className="strategy-advisor__metric-label">Predicted Finish</span>
                   <span className="strategy-advisor__metric-value">P{strategy.predictedFinishPosition}</span>
                 </div>
+                <div className="strategy-advisor__metric">
+                  <span className="strategy-advisor__metric-label">Fuel Burn</span>
+                  <span className="strategy-advisor__metric-value">{strategy.fuelBurnPerLap.toFixed(2)} kg/lap</span>
+                </div>
+                <div className="strategy-advisor__metric">
+                  <span className="strategy-advisor__metric-label">Fuel Left</span>
+                  <span className="strategy-advisor__metric-value">{fuelRemain.toFixed(1)} kg</span>
+                </div>
+                <div className="strategy-advisor__metric">
+                  <span className="strategy-advisor__metric-label">Lift/Coast Gain</span>
+                  <span className="strategy-advisor__metric-value">+{strategy.fuelSavingPotential.toFixed(1)}s</span>
+                </div>
               </div>
 
               <div className="strategy-advisor__status">
@@ -98,6 +111,21 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                       style={{ width: `${confidence}%` }}
                     />
                   </div>
+                </div>
+              </div>
+
+              <div className="strategy-advisor__scenarios">
+                <div className="strategy-advisor__scenarios-title">What-if Scenarios</div>
+                <div className="strategy-advisor__scenario-grid">
+                  {strategy.whatIfScenarios.map(scenario => (
+                    <div className="strategy-advisor__scenario-card" key={`${strategy.driver_number}-${scenario.label}`}>
+                      <div className="strategy-advisor__scenario-label">{scenario.label}</div>
+                      <div className="strategy-advisor__scenario-line">Lap {scenario.pitLap} · {scenario.compound}</div>
+                      <div className="strategy-advisor__scenario-line">Finish P{scenario.projectedFinishPosition}</div>
+                      <div className="strategy-advisor__scenario-line">Gain +{scenario.projectedTimeGain.toFixed(1)}s</div>
+                      <div className="strategy-advisor__scenario-line">Confidence {Math.round(scenario.confidence)}%</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
