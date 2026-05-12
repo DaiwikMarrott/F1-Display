@@ -1,62 +1,78 @@
 # F1 HUD Analytics Implementation Progress
 
-## Current Status: ALL Features Complete and Pushed (Features 1-7)
+## Current Status
 
-### Completed Features
+The current app shell is implemented and wired in `App.tsx` with three main layers: race data ingestion, derived analytics, and presentation tabs. The feature set now includes timing, tires, sectors, gaps, strategy, form, telemetry, incidents, head-to-head, radio, weather, winner probability, track map positioning, and pit-stop overlays.
 
-1. Feature 1: Tire Strategy and Degradation Panel
-- Commit: d5665bd
+## Implemented Feature Areas
 
-2. Feature 2: Sector Analysis Dashboard
-- Commit: 4ceb969
+1. Timing tower
+- Shows sorted standings, gaps, fastest lap state, tire compound, and tire age.
+- Uses hover tooltips for per-driver detail.
 
-3. Feature 3: Gap Analysis and Overtake Predictor
-- Commit: 472104c
+2. Tire strategy
+- Computes tire age, degradation rate, condition percent, performance loss, and optimal pit lap.
+- Uses compound-specific lifespan rules and a predicted pit-loss estimate.
 
-4. Feature 4: Strategy Advisor and Analytics Hardening
-- Commit: 37945d5
-- Includes:
-  - Strategy advisor panel and STRAT tab
-  - Null-safe analytics map population for missing tire stints
-  - Compact sidebar tab sizing improvements
+3. Sector analysis
+- Simulates sector splits from lap time and compares each sector against the leader.
+- Marks sectors as purple, green, yellow, or red.
 
-5. Feature 5: Form and Momentum Panel
-- Includes:
-  - Driver trend (improving, stable, declining)
-  - Momentum score visualization
-  - Consistency, average of last 5 laps, peak performance window
+4. Gap analysis
+- Calculates gap-to-leader, gap trend, DRS window eligibility, and overtake probability.
+- Estimates laps until an overtake where the closing rate supports one.
 
-6. Feature 6: Telemetry Panel
-- Complete: Built `TelemetryPanel.tsx` & `TelemetryPanel.css`.
-- Wired into `App.tsx` under the TELEM tab.
+5. Strategy advisor
+- Produces pit-now, stay-out, monitor, and push recommendations.
+- Includes risk and confidence scoring plus an optimal next-stop compound suggestion.
 
-7. Feature 7: Incidents Overlay & Tracker
-- Complete: Built `useIncidentDetection.ts` for automated simulated incident creation.
-- Built `IncidentTracker.tsx` & `.css` for ALERTS tab.
-- Integrated `PitStopOverlay.tsx` into `App.tsx`.
+6. Form and momentum
+- Uses a rolling five-lap window for average pace, consistency, momentum, and peak window.
+- Distinguishes improving, stable, and declining drivers.
 
-8. Critical Fixes: Track Map & Circuits
-- **TrackMap**: Completely rewritten to position drivers along the track dynamically using `getPointAtLength()` from SVG paths.
-- **Circuits**: All 19+ generic polygon paths replaced with realistic Bézier curve approximations of real F1 circuits.
-- Added `DriverTooltip` for interactive driver information on hover.
+7. Telemetry panel
+- Displays simulated top speed, average speed, acceleration, corner speed, and G-force.
+- Renders the telemetry as ranked bars and compact metric chips.
 
-## Current Analytics Tabs
+8. Incident tracker and pit overlay
+- `useIncidentDetection` generates simulated pit issues, spins, safety cars, and VSC events from race state.
+- `IncidentTracker` separates active and resolved incidents.
+- `PitStopOverlay` surfaces pit notifications and dismisses them automatically.
+
+9. Head-to-head, team radio, and weather
+- Head-to-head compares two drivers across standings and analytics.
+- Team radio turns race state and incidents into short broadcast-style messages.
+- Weather simulates track temperature, air temperature, rain probability, and condition.
+
+10. Track map and circuit rendering
+- Track positions use live location data when available.
+- Fallback positioning uses SVG path sampling with `getPointAtLength()` on the selected circuit shape.
+- Circuits are defined in `src/data/circuits.ts` as realistic Bézier-style approximations.
+
+## Current Tabs
+
 - TIMING
 - TIRES
-- SECTORS
+- SECTOR
 - GAPS
 - STRAT
 - FORM
 - TELEM
-- ALERTS
+- ALERT
+- H2H
+- RADIO
+- WTHR
 
-## Verified Working
-- All 8 analytics panels tested in browser
-- Track layout shapes & SVG path driver movement
-- TypeScript builds pass without errors
-- All modifications committed and pushed to remote
+## Data And Logic Notes
+
+- `useF1Data` fetches sessions, latest race metadata, drivers, positions, laps, stints, pit stops, and locations.
+- The hook caches session lists and completed races to reduce repeat network work.
+- When OpenF1 is unavailable, the app falls back to cached data or a demo race so the UI stays populated.
+- `useAnalytics` currently returns tire, sector, gap, strategy, form, and telemetry maps.
+- Incident generation is intentionally separate from `useAnalytics` and lives in `useIncidentDetection`.
 
 ## Operational Notes
-- OpenF1 API can return HTTP 429.
-- Demo mode fallback keeps the app usable during rate limits, dynamically adjusting current year.
-- Dev server runs on port 5173.
+
+- OpenF1 can return HTTP 429, so the demo fallback is part of the normal runtime path.
+- The dev server runs on port 5173.
+- The build script is `npm run build` and the development script is `npm run dev`.

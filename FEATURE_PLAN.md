@@ -1,4 +1,4 @@
-# F1 HUD Feature Implementation Plan
+# F1 HUD Feature Reference
 
 ## Overview
 Adding modern, dynamic features to create a data-driven pit wall analyst experience that engages users with real-time strategic insights.
