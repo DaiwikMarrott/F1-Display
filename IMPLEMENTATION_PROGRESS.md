@@ -25,6 +25,7 @@ The current app shell is implemented and wired in `App.tsx` with three main laye
 5. Strategy advisor
 - Produces pit-now, stay-out, monitor, and push recommendations.
 - Includes risk and confidence scoring plus an optimal next-stop compound suggestion.
+- Now also includes fuel burn per lap, estimated fuel remaining, lift-and-coast gain, and what-if scenario cards.
 
 6. Form and momentum
 - Uses a rolling five-lap window for average pace, consistency, momentum, and peak window.
@@ -40,9 +41,15 @@ The current app shell is implemented and wired in `App.tsx` with three main laye
 - `PitStopOverlay` surfaces pit notifications and dismisses them automatically.
 
 9. Head-to-head, team radio, and weather
-- Head-to-head compares two drivers across standings and analytics.
-- Team radio turns race state and incidents into short broadcast-style messages.
+- Head-to-head compares two drivers across standings and analytics, plus a season snapshot built from recent race results.
+- Team radio turns race state and incidents into short broadcast-style messages and a strategy timeline.
 - Weather simulates track temperature, air temperature, rain probability, and condition.
+
+## Documentation Update Notes
+
+- The README now captures the implementation methods used for the three newly completed features.
+- The feature reference now marks Strategy Advisor, Head-to-Head, and Team Radio as implemented instead of planned.
+- These updates were documented after the code changes so future work can reference the current behavior instead of the original plan wording.
 
 10. Track map and circuit rendering
 - Track positions use live location data when available.

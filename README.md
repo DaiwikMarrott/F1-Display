@@ -30,6 +30,18 @@ F1-Display is a React + Vite heads-up display for Formula 1 race analysis. It co
 - Winner probability: position, gap, and laps-remaining scoring normalized into top-five probability bars.
 - Team radio and weather: simulated messages and weather states derived from the current race state.
 
+## Recently Implemented
+
+- Strategy Advisor now includes fuel burn estimates, fuel remaining, lift-and-coast gain, and what-if pit scenarios.
+- Head-to-Head now includes season-to-date snapshot data pulled from recent race sessions, including races analyzed, podiums, wins, points, and best finish.
+- Team Radio now renders a chronological transcript with message source labels and a strategy changes log.
+
+## Implementation Methods Used For Those Updates
+
+- Strategy Advisor: extended the derived strategy model with fuel burn, estimated fuel left, and scenario objects, then rendered those values as extra metrics and scenario cards.
+- Head-to-Head: fetched recent race position data for the selected drivers, summarized final finishes across recent sessions, and displayed the season snapshot under the current-race comparison.
+- Team Radio: promoted the message feed to a structured transcript, labeled each message by source, and added a timeline-style strategy log built from the generated strategy calls.
+
 ## Local Development
 
 - Install dependencies with `npm install`.

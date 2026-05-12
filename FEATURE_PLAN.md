@@ -3,6 +3,20 @@
 ## Overview
 Adding modern, dynamic features to create a data-driven pit wall analyst experience that engages users with real-time strategic insights.
 
+## Current Status Update
+
+The following items from the original plan are now implemented in the app and documented in the progress log:
+
+- Strategy Recommendation Engine: fuel burn estimates, fuel remaining, lift-and-coast gain, and what-if scenario cards are now in `StrategyAdvisor.tsx`.
+- Head-to-Head Comparison: recent-race season snapshot data is now shown in `HeadToHead.tsx`.
+- Team Radio Highlights: transcript-style radio messages and a strategy changes log are now shown in `TeamRadio.tsx`.
+
+Implementation methods used:
+
+- Strategy recommendation was extended in the analytics hook, then rendered as additional metrics and scenario cards.
+- Head-to-head now loads recent race results for the selected drivers and summarizes finishing positions across those sessions.
+- Team radio now labels each call by source and orders messages chronologically to read like a transcript.
+
 ## Phase 1: Core Analytics Features (Priority 1)
 
 ### 1. Tire Strategy & Degradation Panel
@@ -55,6 +69,10 @@ Adding modern, dynamic features to create a data-driven pit wall analyst experie
 - Fuel consumption estimator
 - Race finish position prediction
 - "What-if" scenario simulations
+
+**Status**: Implemented
+
+**Method Used**: Extended the strategy analytics model with fuel burn, fuel remaining, and scenario objects, then rendered them as extra metrics and what-if cards.
 
 **Data Used**: currentLap, totalLaps, pitCount, compound, tireAge
 **Visual**: Recommendation cards, strategy tree visualization
@@ -110,10 +128,18 @@ Adding modern, dynamic features to create a data-driven pit wall analyst experie
 - Detailed telemetry comparison
 - Season-to-date stats vs real-time race
 
+**Status**: Implemented
+
+**Method Used**: Loaded recent race position data for the selected drivers, summarized their finishing history, and displayed the resulting season snapshot in the comparison panel.
+
 ### 9. Team Radio Highlights
 - Key pit calls transcript
 - Driver communication timeline
 - Strategy changes log
+
+**Status**: Implemented
+
+**Method Used**: Structured the generated messages into a transcript with source labels and added a strategy changes timeline for the most relevant calls.
 
 ### 10. Weather Impact Analysis
 - Track condition display
