@@ -198,7 +198,10 @@ const App: React.FC = () => {
           <span className="app-loading__text">Loading F1 Data...</span>
         </div>
       ) : (
-        <main className="app-main">
+        <main
+          className="app-main"
+          key={`${session?.meeting_key ?? 'none'}-${session?.session_key ?? selectedRaceKey ?? 'latest'}`}
+        >
           <div className="app-main__content">
             {/* Left Sidebar */}
             <aside className="app-sidebar app-sidebar--left">
