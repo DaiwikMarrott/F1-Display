@@ -1,13 +1,17 @@
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import type { DriverStanding, Location } from '../types/f1';
-import { getCircuitByCountry } from '../data/circuits';
+import type { DriverStanding, Location, Session } from '../types/f1';
+import type { DataQuality } from '../types/dataQuality';
+import { getCircuitForSession } from '../data/circuits';
+import { getSessionPhase } from '../domain/sessionSelection';
 import DriverTooltip from './DriverTooltip';
 import './TrackMap.css';
 
 interface Props {
   standings: DriverStanding[];
-  raceCountry?: string | null;
+  session: Session | null;
   currentLap?: number;
+  isLoading: boolean;
+  dataQuality: DataQuality;
 }
 
 const SVG_WIDTH = 900;
@@ -38,23 +42,10 @@ function samplePathPoints(svgPathD: string, numPoints: number): { x: number; y: 
   return points;
 }
 
-/**
- * Get a single point at a fractional position (0–1) along the path.
- */
-function getPointOnPath(svgPathD: string, fraction: number): { x: number; y: number } {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  const path = document.createElementNS(ns, 'path');
-  path.setAttribute('d', svgPathD);
-  svg.appendChild(path);
-  document.body.appendChild(svg);
-
-  const totalLen = path.getTotalLength();
-  const pt = path.getPointAtLength(fraction * totalLen);
-  const result = { x: pt.x, y: pt.y };
-
-  document.body.removeChild(svg);
-  return result;
+function getPathStart(svgPathD: string): { x: number; y: number } | null {
+  const match = svgPathD.match(/^\s*M\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  return { x: Number(match[1]), y: Number(match[2]) };
 }
 
 /**
@@ -103,13 +94,29 @@ function getTrackPositions(
   return positions;
 }
 
-const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) => {
-  const circuit = raceCountry ? getCircuitByCountry(raceCountry) : null;
-  // Fallback to Miami circuit for demo visualization
-  const displayCircuit = circuit || getCircuitByCountry('United States');
+const TrackMap: React.FC<Props> = ({
+  standings,
+  session,
+  currentLap = 1,
+  isLoading,
+  dataQuality,
+}) => {
+  const displayCircuit = getCircuitForSession(session);
+  const sessionPhase = session ? getSessionPhase(session) : 'unknown';
   const hasLocations = standings.some(s => s.location !== null);
+  const showMarkers = !isLoading && sessionPhase !== 'upcoming';
 
   const trackSvgPath = displayCircuit?.svgPath || null;
+  const startPoint = trackSvgPath ? getPathStart(trackSvgPath) : null;
+  const mapStatus = isLoading
+    ? 'LOADING MAP'
+    : sessionPhase === 'upcoming'
+      ? 'UPCOMING — NO POSITION DATA'
+      : !displayCircuit
+        ? 'CIRCUIT LAYOUT UNAVAILABLE'
+        : hasLocations
+          ? dataQuality.provenance === 'cache' ? 'CACHED POSITIONS' : 'OPENF1 POSITIONS'
+          : standings.length > 0 ? 'ESTIMATED POSITIONS' : 'NO POSITION DATA';
 
   // Tooltip state
   const [hoveredDriver, setHoveredDriver] = useState<DriverStanding | null>(null);
@@ -130,6 +137,8 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
   }, []);
 
   const driverPositionsMap = useMemo(() => {
+    if (!showMarkers) return new Map();
+
     if (hasLocations && trackSvgPath) {
       // If we have real location data, map it onto the SVG viewport
       const posMap = new Map<number, { x: number; y: number }>();
@@ -168,32 +177,39 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
       return getTrackPositions(standings, trackSvgPath, currentLap);
     }
 
-    // Last resort: center all drivers
-    const fallback = new Map<number, { x: number; y: number }>();
-    standings.forEach(s => {
-      fallback.set(s.driver.driver_number, { x: SVG_WIDTH / 2, y: SVG_HEIGHT / 2 });
-    });
-    return fallback;
-  }, [standings, hasLocations, trackSvgPath, currentLap]);
+    return new Map();
+  }, [standings, hasLocations, trackSvgPath, currentLap, showMarkers]);
 
   return (
-    <div className="track-map">
+    <div
+      className="track-map"
+      data-session-key={session?.session_key ?? ''}
+      data-meeting-key={session?.meeting_key ?? ''}
+    >
       <div className="track-map__header">
         <span className="track-map__title">
           {displayCircuit ? `${displayCircuit.name}` : 'TRACK MAP'}
         </span>
-        {!hasLocations && (
-          <span className="track-map__demo-badge">SIMULATED POSITIONS</span>
-        )}
+        <span className="track-map__status-badge">{mapStatus}</span>
       </div>
 
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
-        className="track-map__svg"
-        aria-label="F1 Circuit Track Map"
-        preserveAspectRatio="xMidYMid meet"
-      >
+      {!displayCircuit ? (
+        <div className="track-map__state" role="status">
+          <strong>Circuit layout unavailable</strong>
+          <span>
+            {session
+              ? `${session.circuit_short_name || 'Unknown circuit'} does not have a verified layout.`
+              : 'Select a session to view its circuit.'}
+          </span>
+        </div>
+      ) : (
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+          className="track-map__svg"
+          aria-label={`${displayCircuit.name} track map`}
+          preserveAspectRatio="xMidYMid meet"
+        >
         {/* Circuit background */}
         <rect width={SVG_WIDTH} height={SVG_HEIGHT} fill="#15151e" />
 
@@ -253,20 +269,18 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
         ) : null}
 
         {/* Start/Finish line marker */}
-        {trackSvgPath && (() => {
-          const startPt = getPointOnPath(trackSvgPath, 0);
-          return (
+        {startPoint && (
             <g>
               <line
-                x1={startPt.x - 15} y1={startPt.y - 15}
-                x2={startPt.x + 15} y2={startPt.y + 15}
+                x1={startPoint.x - 15} y1={startPoint.y - 15}
+                x2={startPoint.x + 15} y2={startPoint.y + 15}
                 stroke="#ffffff"
                 strokeWidth="3"
                 opacity="0.7"
               />
               <text
-                x={startPt.x + 20}
-                y={startPt.y - 5}
+                x={startPoint.x + 20}
+                y={startPoint.y - 5}
                 fill="#888899"
                 fontSize="10"
                 fontWeight="700"
@@ -275,8 +289,7 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
                 S/F
               </text>
             </g>
-          );
-        })()}
+        )}
 
         {/* Driver dots */}
         {standings.map((s) => {
@@ -380,7 +393,8 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
             </g>
           );
         })}
-      </svg>
+        </svg>
+      )}
 
       {/* Driver tooltip on hover */}
       {hoveredDriver && (
