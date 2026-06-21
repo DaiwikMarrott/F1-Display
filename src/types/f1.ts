@@ -68,12 +68,12 @@ export interface Session {
   session_key: number;
   session_name: string;
   session_type: string;
-  status: string;
+  status?: string;
   date_start: string;
   date_end: string;
   circuit_short_name: string;
   country_name: string;
-  year: number;
+  year?: number;
   meeting_key: number;
 }
 

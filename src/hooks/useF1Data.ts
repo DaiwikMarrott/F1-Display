@@ -13,6 +13,8 @@ import type {
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
 import { getOpenF1Data } from '../services/openf1/client';
+import { isRaceSession, selectCurrentOrLatestRace } from '../domain/sessionSelection';
+import { getRaceLapCount } from '../data/raceLapCounts';
 
 const POLL_INTERVAL = 2000;
 
@@ -129,7 +131,7 @@ export function useF1Data(): F1DataState {
   const [standings, setStandings] = useState<DriverStanding[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [currentLap, setCurrentLap] = useState(0);
-  const [totalLaps, setTotalLaps] = useState(57);
+  const [totalLaps, setTotalLaps] = useState(0);
   const [pitNotifications, setPitNotifications] = useState<PitNotification[]>([]);
   const [isLive, setIsLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -194,20 +196,7 @@ export function useF1Data(): F1DataState {
         // User selected a specific race
         targetSession = sessionsResp.find(s => s.session_key === selectedRaceKey) || null;
       } else {
-        // Load the latest session or next upcoming race
-        try {
-          const latestSessions = await getOpenF1Data<Session[]>('/sessions?session_key=latest');
-          targetSession = latestSessions[0] || null;
-        } catch (e) {
-          console.warn('Failed to fetch latest session:', e);
-          // Fallback: get the most recent session from all sessions
-          if (sessionsResp.length > 0) {
-            // Find the session with the latest date
-            targetSession = sessionsResp.reduce((latest, current) =>
-              new Date(current.date_start) > new Date(latest.date_start) ? current : latest
-            );
-          }
-        }
+        targetSession = selectCurrentOrLatestRace(sessionsResp);
       }
 
       if (!targetSession) {
@@ -226,8 +215,10 @@ export function useF1Data(): F1DataState {
 
       setSession(targetSession);
       const sk = targetSession.session_key;
-      const isRace = targetSession.session_type === 'Race';
+      const isRace = isRaceSession(targetSession);
       const isLiveSession = targetSession.status === 'started' || targetSession.status === 'active';
+      const raceLapCount = getRaceLapCount(targetSession);
+      setTotalLaps(raceLapCount ?? 0);
 
       // 3. Stale-while-revalidate: check cache for complete races
       if (!isLiveSession && raceDataCacheRef.current.has(sk)) {
@@ -313,9 +304,7 @@ export function useF1Data(): F1DataState {
         if (lap.lap_number > maxLap) maxLap = lap.lap_number;
       }
       if (maxLap > 0) setCurrentLap(maxLap);
-      if (isRace) setTotalLaps(57);
-
-      const lapsRemaining = Math.max(1, totalLaps - maxLap);
+      const lapsRemaining = Math.max(1, (raceLapCount ?? 0) - maxLap);
 
       // Find fastest lap driver
       let fastestOverall = Infinity;
@@ -414,7 +403,7 @@ export function useF1Data(): F1DataState {
         raceDataCacheRef.current.set(sk, {
           standings: finalStandings,
           maxLap,
-          totalLaps: isRace ? 57 : totalLaps,
+          totalLaps: isRace ? (raceLapCount ?? 0) : 0,
         });
       }
 
@@ -445,7 +434,7 @@ export function useF1Data(): F1DataState {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedRaceKey, totalLaps]);
+  }, [selectedRaceKey]);
 
   // Fetch on mount and when selectedRaceKey changes
   useEffect(() => {

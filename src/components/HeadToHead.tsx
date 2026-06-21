@@ -10,7 +10,7 @@ interface SessionLite {
     circuit_short_name: string;
     session_name: string;
     session_type: string;
-    status: string;
+    status?: string;
 }
 
 interface Props {

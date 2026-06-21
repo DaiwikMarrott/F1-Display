@@ -18,6 +18,10 @@ import HeadToHead from './components/HeadToHead';
 import TeamRadio from './components/TeamRadio';
 import WeatherPanel from './components/WeatherPanel';
 import { getDataQualityLabel } from './types/dataQuality';
+import {
+  getSessionDisplayLabel,
+  getSessionOptions,
+} from './domain/sessionSelection';
 import './App.css';
 
 type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
@@ -52,19 +56,7 @@ const App: React.FC = () => {
 
   const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
 
-  // Get unique races (one per meeting), sorted by date
-  const uniqueRaces = useMemo(() => {
-    const seen = new Set<string>();
-    const filtered = availableRaces.filter(race => {
-      const raceId = `${race.country_name}_${race.circuit_short_name}`;
-      if (seen.has(raceId)) return false;
-      seen.add(raceId);
-      return true;
-    });
-    return filtered.sort((a, b) =>
-      new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
-    );
-  }, [availableRaces]);
+  const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
 
   const handleRaceSelect = (sessionKey: number | null) => {
     setSelectedRaceKey(sessionKey);
@@ -142,10 +134,10 @@ const App: React.FC = () => {
             <button
               className="app-topbar__race-btn"
               onClick={() => setShowRaceSelector(!showRaceSelector)}
-              title={`${uniqueRaces.length} races available`}
-              aria-label="Select race"
+              title={`${sessionOptions.length} sessions available`}
+              aria-label="Select session"
             >
-              🏁 RACES ({uniqueRaces.length})
+              🏁 SESSIONS ({sessionOptions.length})
             </button>
             {showRaceSelector && (
               <div className="app-topbar__race-dropdown">
@@ -156,8 +148,8 @@ const App: React.FC = () => {
                   📍 Latest Race
                 </button>
                 <div className="app-topbar__race-divider" />
-                {uniqueRaces.length > 0 ? (
-                  uniqueRaces.map(race => (
+                {sessionOptions.length > 0 ? (
+                  sessionOptions.map(race => (
                     <button
                       key={race.session_key}
                       className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
@@ -168,7 +160,7 @@ const App: React.FC = () => {
                       <span className="race-flag">🏁</span>
                       <span className="race-name">{race.country_name}</span>
                       <span className="race-circuit">{race.circuit_short_name}</span>
-                      <span className="race-session">{race.session_name}</span>
+                      <span className="race-session">{getSessionDisplayLabel(race)}</span>
                     </button>
                   ))
                 ) : (
