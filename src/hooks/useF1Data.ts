@@ -10,6 +10,8 @@ import type {
   DriverStanding,
   PitNotification,
 } from '../types/f1';
+import type { DataQuality } from '../types/dataQuality';
+import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
 
 const BASE_URL = 'https://api.openf1.org/v1';
 const POLL_INTERVAL = 2000;
@@ -126,6 +128,7 @@ export interface F1DataState {
   availableRaces: Session[];
   selectedRaceKey: number | null;
   setSelectedRaceKey: (key: number | null) => void;
+  dataQuality: DataQuality;
 }
 
 export function useF1Data(): F1DataState {
@@ -139,6 +142,7 @@ export function useF1Data(): F1DataState {
   const [error, setError] = useState<string | null>(null);
   const [availableRaces, setAvailableRaces] = useState<Session[]>([]);
   const [selectedRaceKey, setSelectedRaceKey] = useState<number | null>(null);
+  const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
 
   // Caching references
   const sessionListCacheRef = useRef<Session[] | null>(null);
@@ -221,6 +225,7 @@ export function useF1Data(): F1DataState {
         const demoStandings = buildDemoStandings(demoLapRef.current);
         setStandings(demoStandings);
         setSession(null);
+        setDataQuality(createDataQuality('demo', { message: 'OpenF1 session data is unavailable' }));
         setIsLoading(false);
         return;
       }
@@ -239,6 +244,7 @@ export function useF1Data(): F1DataState {
         setIsLive(false);
         setIsLoading(false);
         setError(null);
+        setDataQuality(createDataQuality('cache', { freshness: 'stale', message: 'Showing cached completed-session data' }));
         return;
       }
 
@@ -265,6 +271,7 @@ export function useF1Data(): F1DataState {
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
+        setDataQuality(createDataQuality('demo', { message: 'No driver data was returned by OpenF1' }));
         setIsLoading(false);
         return;
       }
@@ -420,6 +427,10 @@ export function useF1Data(): F1DataState {
       setStandings(finalStandings);
       setIsLive(isLiveSession);
       setError(null);
+      setDataQuality(createDataQuality('openf1', {
+        availability: finalStandings.length > 0 ? 'ready' : 'empty',
+        message: isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setError(msg);
@@ -429,6 +440,13 @@ export function useF1Data(): F1DataState {
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
+        setDataQuality(createDataQuality('demo', { message: 'OpenF1 failed; showing deterministic demo data' }));
+      } else {
+        setDataQuality(createDataQuality('cache', {
+          availability: 'partial',
+          freshness: 'stale',
+          message: 'OpenF1 refresh failed; showing the last available data',
+        }));
       }
     } finally {
       setIsLoading(false);
@@ -459,5 +477,6 @@ export function useF1Data(): F1DataState {
     availableRaces,
     selectedRaceKey,
     setSelectedRaceKey,
+    dataQuality,
   };
 }

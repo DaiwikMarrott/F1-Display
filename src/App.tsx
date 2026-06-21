@@ -17,6 +17,7 @@ import PitStopOverlay from './components/PitStopOverlay';
 import HeadToHead from './components/HeadToHead';
 import TeamRadio from './components/TeamRadio';
 import WeatherPanel from './components/WeatherPanel';
+import { getDataQualityLabel } from './types/dataQuality';
 import './App.css';
 
 type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
@@ -35,6 +36,7 @@ const App: React.FC = () => {
     setSelectedRaceKey,
     pitNotifications,
     dismissPitNotification,
+    dataQuality,
   } = useF1Data();
 
   // Analytics engine
@@ -114,13 +116,18 @@ const App: React.FC = () => {
         </div>
 
         <div className="app-topbar__center">
-          {isLive ? (
+          {isLive && dataQuality.provenance === 'openf1' ? (
             <div className="app-topbar__live-badge">
               <span className="live-dot" />
               LIVE
             </div>
           ) : (
-            <div className="app-topbar__demo-badge">DEMO / REPLAY</div>
+            <div
+              className="app-topbar__demo-badge"
+              title={dataQuality.message}
+            >
+              {getDataQualityLabel(dataQuality)}
+            </div>
           )}
           {currentLap > 0 && (
             <span className="app-topbar__lap-counter">
