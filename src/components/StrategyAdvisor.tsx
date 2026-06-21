@@ -1,10 +1,11 @@
-import React from 'react';
 import type { StrategyRecommendation } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
+import { formatLapProgress, formatSignedSeconds } from '../utils/formatters';
 import './StrategyAdvisor.css';
 
 interface Props {
   strategies: Map<number, StrategyRecommendation>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -29,7 +30,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
       <div className="strategy-advisor">
         <div className="strategy-advisor__header">
           <h2 className="strategy-advisor__title">STRATEGY ADVISOR</h2>
-          <span className="strategy-advisor__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="strategy-advisor__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="strategy-advisor__empty">No strategy data available</div>
       </div>
@@ -37,23 +38,22 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
   }
 
   const strategyRows = Array.from(strategies.values())
-    .map(strategy => {
+    .flatMap(strategy => {
       const standing = standings.find(s => s.driver.driver_number === strategy.driver_number);
-      return { strategy, standing };
+      return standing ? [{ strategy, standing }] : [];
     })
-    .filter(row => !!row.standing)
     .sort((a, b) => a.standing.position - b.standing.position);
 
   return (
     <div className="strategy-advisor">
       <div className="strategy-advisor__header">
         <h2 className="strategy-advisor__title">STRATEGY ADVISOR</h2>
-        <span className="strategy-advisor__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="strategy-advisor__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="strategy-advisor__container">
         {strategyRows.map(({ strategy, standing }) => {
-          const driverCode = standing.driver.driver_number_display || `D${strategy.driver_number}`;
+          const driverCode = standing.driver.name_acronym || `D${strategy.driver_number}`;
           const actionClass = ACTION_CLASS[strategy.recommendedAction];
           const confidence = Math.max(0, Math.min(100, Math.round(strategy.confidence)));
           const fuelRemain = Math.max(0, strategy.estimatedFuelRemaining);
@@ -78,7 +78,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Est. Gain</span>
-                  <span className="strategy-advisor__metric-value">+{strategy.optimalNextStop.gainSeconds.toFixed(1)}s</span>
+                  <span className="strategy-advisor__metric-value">{formatSignedSeconds(strategy.optimalNextStop.gainSeconds)}</span>
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Predicted Finish</span>
@@ -94,7 +94,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Lift/Coast Gain</span>
-                  <span className="strategy-advisor__metric-value">+{strategy.fuelSavingPotential.toFixed(1)}s</span>
+                  <span className="strategy-advisor__metric-value">{formatSignedSeconds(strategy.fuelSavingPotential)}</span>
                 </div>
               </div>
 
@@ -122,7 +122,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                       <div className="strategy-advisor__scenario-label">{scenario.label}</div>
                       <div className="strategy-advisor__scenario-line">Lap {scenario.pitLap} · {scenario.compound}</div>
                       <div className="strategy-advisor__scenario-line">Finish P{scenario.projectedFinishPosition}</div>
-                      <div className="strategy-advisor__scenario-line">Gain +{scenario.projectedTimeGain.toFixed(1)}s</div>
+                      <div className="strategy-advisor__scenario-line">Gain {formatSignedSeconds(scenario.projectedTimeGain)}</div>
                       <div className="strategy-advisor__scenario-line">Confidence {Math.round(scenario.confidence)}%</div>
                     </div>
                   ))}

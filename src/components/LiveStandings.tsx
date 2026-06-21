@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
+import { formatLapTime, safeTireAge } from '../utils/formatters';
 import './LiveStandings.css';
 
 interface Props {
@@ -24,13 +25,6 @@ function getCompoundLetter(compound: Stint['compound'] | undefined): string {
     case 'WET':          return 'W';
     default:             return '?';
   }
-}
-
-function formatLapTime(seconds: number | null): string {
-  if (seconds === null) return '—';
-  const mins = Math.floor(seconds / 60);
-  const secs = (seconds % 60).toFixed(2).padStart(5, '0');
-  return `${mins}:${secs}`;
 }
 
 const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
@@ -84,17 +78,17 @@ const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) =>
   return (
     <div className="live-standings">
       <div className="live-standings__header">
-        <div className="live-standings__title">LIVE STANDINGS</div>
+        <div className="live-standings__title">RACE STANDINGS</div>
         <div className="live-standings__race-info">
           <div className="race-info__lap">
             <span className="lap-label">LAP</span>
-            <span className="lap-current">{currentLap}</span>
+            <span className="lap-current">{currentLap > 0 ? currentLap : '—'}</span>
             <span className="lap-separator">/</span>
-            <span className="lap-total">{totalLaps}</span>
+            <span className="lap-total">{totalLaps > 0 ? totalLaps : '—'}</span>
           </div>
           <div className="race-info__remaining">
             <span className="remaining-label">REMAINING</span>
-            <span className="remaining-count">{lapsRemaining}</span>
+            <span className="remaining-count">{currentLap > 0 && totalLaps > 0 ? lapsRemaining : '—'}</span>
           </div>
         </div>
       </div>
@@ -106,7 +100,7 @@ const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) =>
       </div>
 
       <div className="live-standings__list">
-        {standings.slice(0, 10).map((standing, index) => {
+        {standings.slice(0, 10).map((standing) => {
           const teamColor = `#${standing.driver.team_colour || 'ffffff'}`;
           const tracker = positionTrackers.get(standing.driver.driver_number);
           const isAnimating = animatingDrivers.has(standing.driver.driver_number);
@@ -165,7 +159,9 @@ const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) =>
                 <span className={`tire-compound compound-${compound?.toLowerCase()}`}>
                   {getCompoundLetter(compound)}
                 </span>
-                <span className="tire-age">{standing.tireAge} laps</span>
+                <span className="tire-age">
+                  {safeTireAge(standing.tireAge) === null ? 'Unavailable' : `${safeTireAge(standing.tireAge)} laps`}
+                </span>
               </div>
 
               {/* Pit Stops */}

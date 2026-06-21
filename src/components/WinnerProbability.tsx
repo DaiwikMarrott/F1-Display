@@ -16,7 +16,7 @@ const WinnerProbability: React.FC<Props> = ({ standings }) => {
   return (
     <div className="win-prob">
       <div className="win-prob__header">
-        <span className="win-prob__title">WIN PROBABILITY</span>
+        <span className="win-prob__title">WIN PROBABILITY (EST.)</span>
       </div>
       <div className="win-prob__list">
         {top5.map((s, rank) => {
@@ -45,7 +45,7 @@ const WinnerProbability: React.FC<Props> = ({ standings }) => {
         })}
       </div>
       <div className="win-prob__footer">
-        <span>Based on position, gap &amp; laps remaining</span>
+        <span>Derived estimate — not an official probability</span>
       </div>
     </div>
   );

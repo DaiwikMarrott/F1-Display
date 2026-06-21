@@ -1,10 +1,11 @@
-import React from 'react';
 import { SectorData } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './SectorAnalysis.css';
 
 interface Props {
   sectors: Map<number, SectorData>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -20,7 +21,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
       <div className="sector-analysis">
         <div className="sector-analysis__header">
           <h2 className="sector-analysis__title">SECTOR ANALYSIS</h2>
-          <span className="sector-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="sector-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="sector-analysis__empty">No data available</div>
       </div>
@@ -38,15 +39,8 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
     return 'red';                        // Large gap
   };
 
-  const getStatusLabel = (delta: number): string => {
-    if (delta < -0.001) return 'PB';    // Personal Best
-    if (delta < 0.2) return 'P1+';      // Close to P1
-    if (delta < 0.5) return 'MOD';      // Moderate
-    return 'GAP';                        // Large gap
-  };
-
   const formatTime = (ms: number): string => {
-    if (!ms || ms === 0) return '--:-';
+    if (!Number.isFinite(ms) || ms <= 0) return 'Unavailable';
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const hundredths = Math.floor((ms % 1000) / 10);
@@ -54,7 +48,8 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
   };
 
   const formatDelta = (ms: number): string => {
-    if (!ms || ms === 0) return '----';
+    if (!Number.isFinite(ms)) return 'Unavailable';
+    if (ms === 0) return '0';
     const sign = ms > 0 ? '+' : '';
     const centiseconds = (ms / 10).toFixed(0);
     return `${sign}${centiseconds}`;
@@ -72,7 +67,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
     <div className="sector-analysis">
       <div className="sector-analysis__header">
         <h2 className="sector-analysis__title">SECTOR ANALYSIS</h2>
-        <span className="sector-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="sector-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       {/* Column Headers */}
@@ -91,7 +86,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
 
           const position = standing.position;
           const driverNum = standing.driver.driver_number;
-          const driverCode = standing.driver.driver_number_display || `D${driverNum}`;
+          const driverCode = standing.driver.name_acronym || `D${driverNum}`;
 
           const s1Delta = leaderData ? (sectorData.sector1 - leaderData.sector1) : 0;
           const s2Delta = leaderData ? (sectorData.sector2 - leaderData.sector2) : 0;

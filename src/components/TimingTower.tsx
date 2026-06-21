@@ -1,19 +1,13 @@
 import React, { useState } from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
 import DriverTooltip from './DriverTooltip';
+import { formatLapProgress, formatLapTime } from '../utils/formatters';
 import './TimingTower.css';
 
 interface Props {
   standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
-}
-
-function formatLapTime(seconds: number | null): string {
-  if (seconds === null) return '—:——.———';
-  const mins = Math.floor(seconds / 60);
-  const secs = (seconds % 60).toFixed(3).padStart(6, '0');
-  return `${mins}:${secs}`;
 }
 
 function getCompoundClass(compound: Stint['compound'] | undefined): string {
@@ -62,7 +56,7 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
       <div className="timing-tower__header">
         <span className="timing-tower__title">TIMING TOWER</span>
         <span className="timing-tower__lap">
-          LAP {currentLap} / {totalLaps}
+          {formatLapProgress(currentLap, totalLaps)}
         </span>
       </div>
 
@@ -126,7 +120,7 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
                 <span className={`tyre-badge ${getCompoundClass(s.currentStint?.compound)}`}>
                   {getCompoundLetter(s.currentStint?.compound)}
                 </span>
-                <span className="tyre-age">{s.tireAge}</span>
+                <span className="tyre-age">{s.tireAge >= 0 ? s.tireAge : '—'}</span>
               </span>
             </div>
           );

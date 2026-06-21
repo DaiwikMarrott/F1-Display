@@ -1,19 +1,13 @@
-import React from 'react';
 import type { DriverForm } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
+import { formatLapProgress, formatLapTime } from '../utils/formatters';
 import './FormMomentum.css';
 
 interface Props {
   formData: Map<number, DriverForm>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
-}
-
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const millis = Math.floor((seconds - Math.floor(seconds)) * 1000);
-  return `${mins}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
 }
 
 export default function FormMomentum({ formData, standings, currentLap, totalLaps }: Props) {
@@ -22,7 +16,7 @@ export default function FormMomentum({ formData, standings, currentLap, totalLap
       <div className="form-momentum">
         <div className="form-momentum__header">
           <h2 className="form-momentum__title">FORM AND MOMENTUM</h2>
-          <span className="form-momentum__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="form-momentum__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="form-momentum__empty">No form data available</div>
       </div>
@@ -30,23 +24,22 @@ export default function FormMomentum({ formData, standings, currentLap, totalLap
   }
 
   const rows = Array.from(formData.values())
-    .map(form => ({
-      form,
-      standing: standings.find(s => s.driver.driver_number === form.driver_number),
-    }))
-    .filter(row => !!row.standing)
+    .flatMap(form => {
+      const standing = standings.find(s => s.driver.driver_number === form.driver_number);
+      return standing ? [{ form, standing }] : [];
+    })
     .sort((a, b) => a.standing.position - b.standing.position);
 
   return (
     <div className="form-momentum">
       <div className="form-momentum__header">
         <h2 className="form-momentum__title">FORM AND MOMENTUM</h2>
-        <span className="form-momentum__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="form-momentum__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="form-momentum__container">
         {rows.map(({ form, standing }) => {
-          const driverCode = standing.driver.driver_number_display || `D${form.driver_number}`;
+          const driverCode = standing.driver.name_acronym || `D${form.driver_number}`;
           const momentum = Math.max(-100, Math.min(100, form.momentumScore));
           const trendClass = form.trend;
           const consistency = Math.max(0, Math.min(100, form.consistency));

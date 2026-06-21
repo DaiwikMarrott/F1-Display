@@ -1,85 +1,86 @@
-# F1 HUD Analytics Implementation Progress
+# F1 HUD Data Reliability Progress
 
-## Current Status
+## Current status
 
-The current app shell is implemented and wired in `App.tsx` with three main layers: race data ingestion, derived analytics, and presentation tabs. The feature set now includes timing, tires, sectors, gaps, strategy, form, telemetry, incidents, head-to-head, radio, weather, winner probability, track map positioning, and pit-stop overlays.
+The application has completed a data-reliability hardening pass focused on truthful UX, bounded OpenF1 usage, deterministic analytics, terminal error states, and automated verification.
 
-## Implemented Feature Areas
+## Completed checkpoints
 
-1. Timing tower
-- Shows sorted standings, gaps, fastest lap state, tire compound, and tire age.
-- Uses hover tooltips for per-driver detail.
+1. Validation foundation — `21f21ae`
+   - Added compatible Vite, Vitest, Testing Library, jsdom, MSW, ESLint, coverage, typecheck, and aggregate validation scripts.
+   - Removed latent TypeScript and lint failures.
 
-2. Tire strategy
-- Computes tire age, degradation rate, condition percent, performance loss, and optimal pit lap.
-- Uses compound-specific lifespan rules and a predicted pit-loss estimate.
+2. Data provenance contracts — `110a35d`
+   - Added explicit OpenF1, cached, stale, derived, estimated, demo, unavailable, loading, empty, and error states.
+   - Added guarded number, lap, time, percentage, tire-age, and signed-value formatters.
 
-3. Sector analysis
-- Simulates sector splits from lap time and compares each sector against the leader.
-- Marks sectors as purple, green, yellow, or red.
+3. Centralized OpenF1 access — `a2a9f1e`
+   - Added request deduplication, endpoint TTLs, stale-while-revalidate, bounded retries, `Retry-After`, deterministic backoff jitter, and shared 429 cooldown.
+   - Removed raw OpenF1 fetches from the main race-data hook.
 
-4. Gap analysis
-- Calculates gap-to-leader, gap trend, DRS window eligibility, and overtake probability.
-- Estimates laps until an overtake where the closing rate supports one.
+4. Session and lap correctness — `a5dd0bb`
+   - “Latest Race” now selects only an active or completed Race.
+   - Future events remain upcoming.
+   - Practice, Qualifying, Sprint, and Race labels remain distinct.
+   - Known circuits use circuit-specific race lap totals.
 
-5. Strategy advisor
-- Produces pit-now, stay-out, monitor, and push recommendations.
-- Includes risk and confidence scoring plus an optimal next-stop compound suggestion.
-- Now also includes fuel burn per lap, estimated fuel remaining, lift-and-coast gain, and what-if scenario cards.
+5. Polling load reduction — `ac1810f`
+   - Completed sessions no longer poll.
+   - Upcoming sessions avoid detail endpoints.
+   - Live sessions use a bounded cadence and endpoint cache policies.
+   - Hidden tabs pause polling.
 
-6. Form and momentum
-- Uses a rolling five-lap window for average pace, consistency, momentum, and peak window.
-- Distinguishes improving, stable, and declining drivers.
+6. Invalid metric guards — `0113d63`
+   - Removed negative tire-age paths, zero-second form calculations, fabricated live gaps, lap-zero labels, double-signed gains, and visible non-finite values.
+   - Added truthful waiting and unavailable states.
 
-7. Telemetry panel
-- Displays simulated top speed, average speed, acceleration, corner speed, and G-force.
-- Renders the telemetry as ranked bars and compact metric chips.
+7. Deterministic analytics — `3c83bbc`
+   - Removed all `Math.random` usage.
+   - Added seeded deterministic demo and estimate generation.
+   - Added visible analytics provenance labels.
+   - Marked unofficial probability, telemetry, radio, incident, and weather outputs honestly.
 
-8. Incident tracker and pit overlay
-- `useIncidentDetection` generates simulated pit issues, spins, safety cars, and VSC events from race state.
-- `IncidentTracker` separates active and resolved incidents.
-- `PitStopOverlay` surfaces pit notifications and dismisses them automatically.
+8. H2H terminal states — `eba4e0d`
+   - Head-to-head now uses the shared OpenF1 client.
+   - Loading resolves to success, partial, empty, or error.
+   - Added retry behavior and cached request reuse.
 
-9. Head-to-head, team radio, and weather
-- Head-to-head compares two drivers across standings and analytics, plus a season snapshot built from recent race results.
-- Team radio turns race state and incidents into short broadcast-style messages and a strategy timeline.
-- Weather simulates track temperature, air temperature, rain probability, and condition.
+9. Critical-flow coverage — `f715230`
+   - Added application smoke coverage for all eleven tabs and the session selector.
+   - The suite covers session fallback, future sessions, labels, lap counts, caching, deduplication, backoff, cooldown, invalid metrics, determinism, H2H states, and major rendering paths.
 
-## Documentation Update Notes
+10. Documentation and release hardening
+   - Updated data-source definitions, commands, limitations, and feature claims.
+   - Removed unsupported accuracy targets.
 
-- The README now captures the implementation methods used for the three newly completed features.
-- The feature reference now marks Strategy Advisor, Head-to-Head, and Team Radio as implemented instead of planned.
-- These updates were documented after the code changes so future work can reference the current behavior instead of the original plan wording.
+## Data-source summary
 
-10. Track map and circuit rendering
-- Track positions use live location data when available.
-- Fallback positioning uses SVG path sampling with `getPointAtLength()` on the selected circuit shape.
-- Circuits are defined in `src/data/circuits.ts` as realistic Bézier-style approximations.
+- Real OpenF1: sessions, drivers, positions, laps, stints, pits, locations, recent finishing positions.
+- Cached: any previously successful OpenF1 response within its stale window.
+- Derived: tire state, race progress, winner estimate, and comparisons computed from available data.
+- Estimated: sectors, strategy, form, and telemetry models where direct measurements are unavailable.
+- Demo-only: fallback standings, incidents, radio transcript, and weather simulation.
+- Unavailable: invalid, missing, future, incomplete, or unsupported metrics.
 
-## Current Tabs
+## Verification
 
-- TIMING
-- TIRES
-- SECTOR
-- GAPS
-- STRAT
-- FORM
-- TELEM
-- ALERT
-- H2H
-- RADIO
-- WTHR
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run test:coverage
+npm run build
+npm run check
+npm audit
+git diff --check
+```
 
-## Data And Logic Notes
+The tests use fixtures and mocked requests rather than the real OpenF1 service.
 
-- `useF1Data` fetches sessions, latest race metadata, drivers, positions, laps, stints, pit stops, and locations.
-- The hook caches session lists and completed races to reduce repeat network work.
-- When OpenF1 is unavailable, the app falls back to cached data or a demo race so the UI stays populated.
-- `useAnalytics` currently returns tire, sector, gap, strategy, form, and telemetry maps.
-- Incident generation is intentionally separate from `useAnalytics` and lives in `useIncidentDetection`.
+## Remaining limitations
 
-## Operational Notes
-
-- OpenF1 can return HTTP 429, so the demo fallback is part of the normal runtime path.
-- The dev server runs on port 5173.
-- The build script is `npm run build` and the development script is `npm run dev`.
+- No official interval/gap feed is currently integrated.
+- Weather, radio, incidents, and full telemetry remain explicitly labeled simulations or estimates.
+- The cache is in-memory and browser-local.
+- Unknown circuit lap counts remain unavailable.
+- No externally validated prediction-accuracy dataset is included.

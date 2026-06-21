@@ -10,15 +10,22 @@ import type {
   DriverStanding,
   PitNotification,
 } from '../types/f1';
-
-const BASE_URL = 'https://api.openf1.org/v1';
-const POLL_INTERVAL = 2000;
-
-async function fetchJSON<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  return response.json() as Promise<T>;
-}
+import type { DataQuality } from '../types/dataQuality';
+import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
+import { getOpenF1Data } from '../services/openf1/client';
+import {
+  getSessionPhase,
+  isRaceSession,
+  selectCurrentOrLatestRace,
+} from '../domain/sessionSelection';
+import { getRaceLapCount } from '../data/raceLapCounts';
+import { getSessionPollingInterval } from '../services/openf1/pollingPolicy';
+import { deterministicRange } from '../utils/deterministic';
+import { fulfilledArray, hasRejected } from '../services/openf1/settled';
+import {
+  plausiblePitDuration,
+  shouldEmitPitNotifications,
+} from '../domain/pitNotifications';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -69,7 +76,7 @@ const DEMO_DRIVERS: Driver[] = [
   { driver_number: 87, broadcast_name: 'O BEARMAN', full_name: 'Oliver Bearman', name_acronym: 'BEA', team_name: 'Haas F1 Team', team_colour: 'B6BABD', session_key: 0 },
 ];
 
-function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
+export function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
   const compounds: Stint['compound'][] = ['SOFT', 'MEDIUM', 'HARD', 'SOFT', 'MEDIUM'];
   const raw = DEMO_DRIVERS.map((driver, idx) => {
     // Simulate realistic gaps that grow as laps progress
@@ -77,7 +84,8 @@ function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
     const baseGap = idx === 0 ? 0 : idx * 1.1;
     // Gap grows slightly as race progresses (some drivers drop back)
     const lapFactor = (currentLap - 14) * 0.1;
-    const gapSec = baseGap + lapFactor + Math.random() * 1.5;
+    const gapSec = baseGap + lapFactor
+      + deterministicRange(0, 1.5, driver.driver_number, currentLap, 'demo-gap');
 
     // Simulate lap times that vary slightly
     const baseLapTime = 90 + idx * 0.3;
@@ -92,7 +100,8 @@ function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
       position,
       gapToLeader: formatGap(gapSec),
       lastLap,
-      bestLap: baseLapTime - 0.8 + Math.random() * 0.2,
+      bestLap: baseLapTime - 0.8
+        + deterministicRange(0, 0.2, driver.driver_number, currentLap, 'demo-best-lap'),
       isFastestLap: idx === 3 && currentLap > 20,
       currentStint: {
         driver_number: driver.driver_number,
@@ -126,27 +135,32 @@ export interface F1DataState {
   availableRaces: Session[];
   selectedRaceKey: number | null;
   setSelectedRaceKey: (key: number | null) => void;
+  dataQuality: DataQuality;
 }
 
 export function useF1Data(): F1DataState {
   const [standings, setStandings] = useState<DriverStanding[]>([]);
   const [session, setSession] = useState<Session | null>(null);
   const [currentLap, setCurrentLap] = useState(0);
-  const [totalLaps, setTotalLaps] = useState(57);
+  const [totalLaps, setTotalLaps] = useState(0);
   const [pitNotifications, setPitNotifications] = useState<PitNotification[]>([]);
   const [isLive, setIsLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [availableRaces, setAvailableRaces] = useState<Session[]>([]);
   const [selectedRaceKey, setSelectedRaceKey] = useState<number | null>(null);
+  const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
 
   // Caching references
   const sessionListCacheRef = useRef<Session[] | null>(null);
   const raceDataCacheRef = useRef<Map<number, { standings: DriverStanding[], maxLap: number, totalLaps: number }>>(new Map());
 
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
+  const prevPitSessionKeyRef = useRef<number | null>(null);
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
   const demoLapRef = useRef(14);
   const demoModeRef = useRef(false);
 
@@ -156,7 +170,7 @@ export function useF1Data(): F1DataState {
 
   const fetchData = useCallback(async () => {
     // Determine if switching to a new race (optimistic loading state)
-    if (selectedRaceKey && session && selectedRaceKey !== session.session_key && !raceDataCacheRef.current.has(selectedRaceKey)) {
+    if (selectedRaceKey && sessionRef.current && selectedRaceKey !== sessionRef.current.session_key && !raceDataCacheRef.current.has(selectedRaceKey)) {
       setIsLoading(true);
     }
 
@@ -168,17 +182,17 @@ export function useF1Data(): F1DataState {
       } else {
         try {
           const currentYear = new Date().getFullYear();
-          sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=${currentYear}`);
+          sessionsResp = await getOpenF1Data<Session[]>(`/sessions?year=${currentYear}`);
           if (sessionsResp.length > 0) {
             sessionListCacheRef.current = sessionsResp;
           }
         } catch (e) {
           console.warn('Failed to fetch sessions, injecting fallback DEMO races:', e);
           sessionsResp = [
-            { session_key: 9158, session_name: "Race", date_start: "2024-03-02T15:00:00", date_end: "2024-03-02T17:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1229, location: "Sakhir", country_key: 36, country_code: "BRN", country_name: "Bahrain", circuit_key: 63, circuit_short_name: "Sakhir" },
-            { session_key: 9166, session_name: "Race", date_start: "2024-03-09T17:00:00", date_end: "2024-03-09T19:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1230, location: "Jeddah", country_key: 153, country_code: "KSA", country_name: "Saudi Arabia", circuit_key: 149, circuit_short_name: "Jeddah" },
-            { session_key: 9173, session_name: "Race", date_start: "2024-03-24T04:00:00", date_end: "2024-03-24T06:00:00", gmt_offset: "11:00", session_type: "Race", meeting_key: 1231, location: "Melbourne", country_key: 5, country_code: "AUS", country_name: "Australia", circuit_key: 10, circuit_short_name: "Melbourne" },
-          ] as any[];
+            { session_key: 9158, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
+            { session_key: 9166, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
+            { session_key: 9173, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
+          ];
           sessionListCacheRef.current = sessionsResp;
         }
       }
@@ -194,20 +208,7 @@ export function useF1Data(): F1DataState {
         // User selected a specific race
         targetSession = sessionsResp.find(s => s.session_key === selectedRaceKey) || null;
       } else {
-        // Load the latest session or next upcoming race
-        try {
-          const latestSessions = await fetchJSON<Session[]>(`${BASE_URL}/sessions?session_key=latest`);
-          targetSession = latestSessions[0] || null;
-        } catch (e) {
-          console.warn('Failed to fetch latest session:', e);
-          // Fallback: get the most recent session from all sessions
-          if (sessionsResp.length > 0) {
-            // Find the session with the latest date
-            targetSession = sessionsResp.reduce((latest, current) =>
-              new Date(current.date_start) > new Date(latest.date_start) ? current : latest
-            );
-          }
-        }
+        targetSession = selectCurrentOrLatestRace(sessionsResp);
       }
 
       if (!targetSession) {
@@ -219,14 +220,31 @@ export function useF1Data(): F1DataState {
         const demoStandings = buildDemoStandings(demoLapRef.current);
         setStandings(demoStandings);
         setSession(null);
+        setDataQuality(createDataQuality('demo', { message: 'OpenF1 session data is unavailable' }));
         setIsLoading(false);
         return;
       }
 
       setSession(targetSession);
       const sk = targetSession.session_key;
-      const isRace = targetSession.session_type === 'Race';
-      const isLiveSession = targetSession.status === 'started' || targetSession.status === 'active';
+      const isRace = isRaceSession(targetSession);
+      const sessionPhase = getSessionPhase(targetSession);
+      const isLiveSession = sessionPhase === 'live';
+      const raceLapCount = getRaceLapCount(targetSession);
+      setTotalLaps(raceLapCount ?? 0);
+
+      if (sessionPhase === 'upcoming') {
+        setStandings([]);
+        setCurrentLap(0);
+        setIsLive(false);
+        setError(null);
+        setDataQuality(createDataQuality('unavailable', {
+          availability: 'empty',
+          freshness: 'fresh',
+          message: 'Upcoming session; race data is not available yet',
+        }));
+        return;
+      }
 
       // 3. Stale-while-revalidate: check cache for complete races
       if (!isLiveSession && raceDataCacheRef.current.has(sk)) {
@@ -237,25 +255,27 @@ export function useF1Data(): F1DataState {
         setIsLive(false);
         setIsLoading(false);
         setError(null);
+        setDataQuality(createDataQuality('cache', { freshness: 'stale', message: 'Showing cached completed-session data' }));
         return;
       }
 
       // 4. Fetch all race data in parallel
       const [drivers, rawPositions, laps, stints, pits, locations] = await Promise.allSettled([
-        fetchJSON<Driver[]>(`${BASE_URL}/drivers?session_key=${sk}`),
-        fetchJSON<Position[]>(`${BASE_URL}/position?session_key=${sk}`),
-        fetchJSON<Lap[]>(`${BASE_URL}/laps?session_key=${sk}`),
-        fetchJSON<Stint[]>(`${BASE_URL}/stints?session_key=${sk}`),
-        fetchJSON<PitStop[]>(`${BASE_URL}/pit?session_key=${sk}`),
-        fetchJSON<Location[]>(`${BASE_URL}/location?session_key=${sk}`),
+        getOpenF1Data<Driver[]>(`/drivers?session_key=${sk}`),
+        getOpenF1Data<Position[]>(`/position?session_key=${sk}`),
+        getOpenF1Data<Lap[]>(`/laps?session_key=${sk}`),
+        getOpenF1Data<Stint[]>(`/stints?session_key=${sk}`),
+        getOpenF1Data<PitStop[]>(`/pit?session_key=${sk}`),
+        getOpenF1Data<Location[]>(`/location?session_key=${sk}`),
       ]);
 
-      const driversData: Driver[] = drivers.status === 'fulfilled' ? drivers.value : DEMO_DRIVERS;
-      const positionsData: Position[] = rawPositions.status === 'fulfilled' ? rawPositions.value : [];
-      const lapsData: Lap[] = laps.status === 'fulfilled' ? laps.value : [];
-      const stintsData: Stint[] = stints.status === 'fulfilled' ? stints.value : [];
-      const pitsData: PitStop[] = pits.status === 'fulfilled' ? pits.value : [];
-      const locationsData: Location[] = locations.status === 'fulfilled' ? locations.value : [];
+      const driversData: Driver[] = fulfilledArray(drivers);
+      const positionsData: Position[] = fulfilledArray(rawPositions);
+      const lapsData: Lap[] = fulfilledArray(laps);
+      const stintsData: Stint[] = fulfilledArray(stints);
+      const pitsData: PitStop[] = fulfilledArray(pits);
+      const locationsData: Location[] = fulfilledArray(locations);
+      const isPartialResponse = hasRejected([drivers, rawPositions, laps, stints, pits, locations]);
 
       if (driversData.length === 0) {
         demoModeRef.current = true;
@@ -263,6 +283,7 @@ export function useF1Data(): F1DataState {
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
+        setDataQuality(createDataQuality('demo', { message: 'No driver data was returned by OpenF1' }));
         setIsLoading(false);
         return;
       }
@@ -310,9 +331,7 @@ export function useF1Data(): F1DataState {
         if (lap.lap_number > maxLap) maxLap = lap.lap_number;
       }
       if (maxLap > 0) setCurrentLap(maxLap);
-      if (isRace) setTotalLaps(57);
-
-      const lapsRemaining = Math.max(1, totalLaps - maxLap);
+      const lapsRemaining = Math.max(1, (raceLapCount ?? 0) - maxLap);
 
       // Find fastest lap driver
       let fastestOverall = Infinity;
@@ -331,37 +350,28 @@ export function useF1Data(): F1DataState {
         return pa - pb;
       });
 
-      // Get leader lap time
-      const leaderLapTimes: number[] = [];
-      for (const l of lapsData) {
-        if (l.driver_number === sortedByPos[0]?.driver_number && l.lap_duration != null) {
-          leaderLapTimes.push(l.lap_duration);
-        }
-      }
-      const avgLeaderLap = leaderLapTimes.length > 0
-        ? leaderLapTimes.reduce((a, b) => a + b, 0) / leaderLapTimes.length
-        : 90;
-
       // Detect new pit stops
       const newPitNotifications: PitNotification[] = [];
-      for (const pit of pitsData) {
-        const prevCount = prevPitDataRef.current.get(pit.driver_number) ?? 0;
-        const curCount = pitCount.get(pit.driver_number) ?? 0;
-        if (curCount > prevCount) {
-          const driver = driversData.find(d => d.driver_number === pit.driver_number);
-          const pos = latestPos.get(pit.driver_number)?.position ?? 0;
-          const stint = currentStints.get(pit.driver_number);
-          if (driver) {
-            newPitNotifications.push({
-              id: `${pit.driver_number}-${pit.lap_number}-${Date.now()}`,
-              driverNumber: pit.driver_number,
-              driverName: driver.name_acronym,
-              position: pos,
-              lapNumber: pit.lap_number,
-              timestamp: Date.now(),
-              compound: stint?.compound,
-              duration: pit.pit_duration ?? undefined,
-            });
+      if (shouldEmitPitNotifications(isLiveSession, prevPitSessionKeyRef.current, sk)) {
+        for (const pit of pitsData) {
+          const prevCount = prevPitDataRef.current.get(pit.driver_number) ?? 0;
+          const curCount = pitCount.get(pit.driver_number) ?? 0;
+          if (curCount > prevCount) {
+            const driver = driversData.find(d => d.driver_number === pit.driver_number);
+            const pos = latestPos.get(pit.driver_number)?.position ?? 0;
+            const stint = currentStints.get(pit.driver_number);
+            if (driver) {
+              newPitNotifications.push({
+                id: `${pit.driver_number}-${pit.lap_number}-${Date.now()}`,
+                driverNumber: pit.driver_number,
+                driverName: driver.name_acronym,
+                position: pos,
+                lapNumber: pit.lap_number,
+                timestamp: Date.now(),
+                compound: stint?.compound,
+                duration: plausiblePitDuration(pit.pit_duration),
+              });
+            }
           }
         }
       }
@@ -369,6 +379,7 @@ export function useF1Data(): F1DataState {
       const newPitRef = new Map<number, number>();
       for (const [k, v] of pitCount) newPitRef.set(k, v);
       prevPitDataRef.current = newPitRef;
+      prevPitSessionKeyRef.current = sk;
 
       if (newPitNotifications.length > 0) {
         setPitNotifications(prev => [...prev.slice(-5), ...newPitNotifications]);
@@ -381,18 +392,16 @@ export function useF1Data(): F1DataState {
         const best = bestLap.get(driver.driver_number) ?? null;
         const stint = currentStints.get(driver.driver_number) ?? null;
         const age = stint
-          ? maxLap - stint.lap_start + (stint.tyre_age_at_start ?? 0)
+          ? Math.max(0, maxLap - stint.lap_start + (stint.tyre_age_at_start ?? 0))
           : 0;
         const count = pitCount.get(driver.driver_number) ?? 0;
         const loc = latestLocation.get(driver.driver_number) ?? null;
         const last = lap?.lap_duration ?? null;
 
-        const gapSec = pos === 1 ? 0 : (pos - 1) * avgLeaderLap * 0.003 + Math.random() * 0.5;
-
         return {
           driver,
           position: pos,
-          gapToLeader: formatGap(pos === 1 ? 0 : gapSec),
+          gapToLeader: pos === 1 ? 'LEADER' : '—',
           lastLap: last,
           bestLap: best,
           isFastestLap: driver.driver_number === fastestDriver,
@@ -411,13 +420,19 @@ export function useF1Data(): F1DataState {
         raceDataCacheRef.current.set(sk, {
           standings: finalStandings,
           maxLap,
-          totalLaps: isRace ? 57 : totalLaps,
+          totalLaps: isRace ? (raceLapCount ?? 0) : 0,
         });
       }
 
       setStandings(finalStandings);
       setIsLive(isLiveSession);
       setError(null);
+      setDataQuality(createDataQuality('openf1', {
+        availability: finalStandings.length === 0 ? 'empty' : isPartialResponse ? 'partial' : 'ready',
+        message: isPartialResponse
+          ? 'Some OpenF1 endpoints are unavailable'
+          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setError(msg);
@@ -427,22 +442,54 @@ export function useF1Data(): F1DataState {
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
+        setDataQuality(createDataQuality('demo', { message: 'OpenF1 failed; showing deterministic demo data' }));
+      } else {
+        setDataQuality(createDataQuality('cache', {
+          availability: 'partial',
+          freshness: 'stale',
+          message: 'OpenF1 refresh failed; showing the last available data',
+        }));
       }
     } finally {
       setIsLoading(false);
     }
-  }, [selectedRaceKey, totalLaps]);
+  }, [selectedRaceKey]);
 
   // Fetch on mount and when selectedRaceKey changes
   useEffect(() => {
     fetchData();
   }, [selectedRaceKey, fetchData]);
 
-  // Poll for updates
+  // Poll only when the selected session policy requires it.
   useEffect(() => {
-    const interval = setInterval(fetchData, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    const pollingInterval = getSessionPollingInterval(session);
+    if (pollingInterval === null) return undefined;
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (document.hidden || interval !== null) return;
+      interval = setInterval(fetchData, pollingInterval);
+    };
+    const stop = () => {
+      if (interval !== null) clearInterval(interval);
+      interval = null;
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        void fetchData();
+        start();
+      }
+    };
+
+    start();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchData, session]);
 
   return {
     standings,
@@ -457,5 +504,6 @@ export function useF1Data(): F1DataState {
     availableRaces,
     selectedRaceKey,
     setSelectedRaceKey,
+    dataQuality,
   };
 }

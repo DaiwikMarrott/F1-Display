@@ -394,6 +394,31 @@
   border-bottom: 2px solid #e8002d;
 }
 
+.app-analytics-source {
+  padding: 5px 8px;
+  border-bottom: 1px solid #2f2f3f;
+  background: #10101a;
+  color: #b0b0c0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-align: center;
+}
+
+.app-analytics-source--demo {
+  color: #f5a623;
+}
+
+.app-analytics-source--estimated {
+  color: #d7b7ff;
+}
+
+.app-analytics-source--derived,
+.app-analytics-source--cache,
+.app-analytics-source--openf1 {
+  color: #78d7c6;
+}
+
 .app-main__center {
   display: flex;
   flex-direction: column;

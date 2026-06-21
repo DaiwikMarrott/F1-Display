@@ -1,10 +1,12 @@
 import React from 'react';
 import type { TireAnalysis } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './TireStrategy.css';
 
 interface Props {
   tireAnalysis: Map<number, TireAnalysis>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -37,7 +39,7 @@ const TireStrategy: React.FC<Props> = ({ tireAnalysis, standings, currentLap, to
     <div className="tire-strategy">
       <div className="tire-strategy__header">
         <h2 className="tire-strategy__title">TIRE STRATEGY</h2>
-        <span className="tire-strategy__lap">LAP {currentLap}/{totalLaps}</span>
+        <span className="tire-strategy__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="tire-strategy__scroll">

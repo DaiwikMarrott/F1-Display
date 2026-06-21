@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { formatLapProgress } from '../utils/formatters';
+import { deterministicRange } from '../utils/deterministic';
 import './WeatherPanel.css';
 
 interface Props {
@@ -7,29 +9,45 @@ interface Props {
 }
 
 export default function WeatherPanel({ currentLap, totalLaps }: Props) {
+    const hasRaceProgress = currentLap > 0 && totalLaps > 0 && currentLap <= totalLaps;
+
     // Simulate weather state based on race progress
     const { trackTemp, airTemp, rainProb, condition } = useMemo(() => {
         const baseAir = 22;
         const baseTrack = 35;
 
         // Temps slowly change as race goes on
-        const timeFactor = (currentLap / totalLaps);
+        const timeFactor = hasRaceProgress ? currentLap / totalLaps : 0;
 
-        const airTemp = baseAir + (timeFactor * 3) - (Math.random() * 0.5);
-        const trackTemp = baseTrack + (timeFactor * 6) - (Math.random() * 1.5);
+        const airTemp = baseAir + (timeFactor * 3)
+            - deterministicRange(0, 0.5, currentLap, totalLaps, 'air-temp');
+        const trackTemp = baseTrack + (timeFactor * 6)
+            - deterministicRange(0, 1.5, currentLap, totalLaps, 'track-temp');
 
         // Rain probability increases slightly if we're mid-race
         let rainProb = 0;
         let condition = 'Dry';
         if (currentLap > 20 && currentLap < 40) {
-            rainProb = Math.floor(Math.random() * 25); // 0-25%
+            rainProb = Math.floor(deterministicRange(0, 25, currentLap, totalLaps, 'rain-mid'));
             if (rainProb > 15) condition = 'Cloudy';
         } else {
-            rainProb = Math.floor(Math.random() * 5);
+            rainProb = Math.floor(deterministicRange(0, 5, currentLap, totalLaps, 'rain'));
         }
 
         return { trackTemp, airTemp, rainProb, condition };
-    }, [currentLap, totalLaps]);
+    }, [currentLap, totalLaps, hasRaceProgress]);
+
+    if (!hasRaceProgress) {
+        return (
+            <div className="weather-panel">
+                <div className="weather-panel__header">WEATHER IMPACT</div>
+                <div className="weather-panel__content">
+                    <div className="weather-status">{formatLapProgress(currentLap, totalLaps)}</div>
+                    <div className="weather-trend">Weather estimate unavailable</div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="weather-panel">

@@ -1,10 +1,11 @@
-import React from 'react';
 import { GapTrend } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './GapAnalysis.css';
 
 interface Props {
   gapTrends: Map<number, GapTrend>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -20,7 +21,7 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
       <div className="gap-analysis">
         <div className="gap-analysis__header">
           <h2 className="gap-analysis__title">GAP ANALYSIS</h2>
-          <span className="gap-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="gap-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="gap-analysis__empty">No data available</div>
       </div>
@@ -30,14 +31,13 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
   const formatGap = (ms: number): string => {
     if (ms === 0) return '0.000s';
     const sign = ms > 0 ? '+' : '';
-    const seconds = (ms / 1000).toFixed(3);
-    return `${sign}${seconds}s`;
+    return `${sign}${ms.toFixed(3)}s`;
   };
 
   const formatGapTrend = (ms: number): string => {
     if (!ms) return '0.0s/lap';
     const sign = ms < 0 ? '↓ ' : '↑ ';
-    const secondsPerLap = Math.abs(ms / 1000).toFixed(2);
+    const secondsPerLap = Math.abs(ms).toFixed(2);
     return `${sign}${secondsPerLap}s/lap`;
   };
 
@@ -61,7 +61,7 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
     <div className="gap-analysis">
       <div className="gap-analysis__header">
         <h2 className="gap-analysis__title">GAP ANALYSIS</h2>
-        <span className="gap-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="gap-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       {/* Column Headers */}
@@ -79,7 +79,7 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
           if (!standing) return null;
 
           const position = standing.position;
-          const driverCode = standing.driver.driver_number_display || `D${driverNum}`;
+          const driverCode = standing.driver.name_acronym || `D${driverNum}`;
           const gapMs = gapData.gapToLeader;
           const trendColor = getGapTrendColor(gapData.gapTrend);
           const drsWindow = gapData.drsWindow;
@@ -115,8 +115,8 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
                   <div
                     className="gap-analysis__gap-bar-fill"
                     style={{
-                      width: `${Math.min(100, (gapMs / 5000) * 100)}%`,
-                      opacity: Math.min(1, (gapMs / 5000) + 0.3),
+                      width: `${Math.min(100, (gapMs / 5) * 100)}%`,
+                      opacity: Math.min(1, (gapMs / 5) + 0.3),
                     }}
                   />
                 </div>
@@ -138,7 +138,7 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
                   {drsWindow ? '✓ OPEN' : '✗ Closed'}
                 </div>
                 <div className="gap-analysis__drs-distance">
-                  {gapMs > 0 ? `${(gapMs / 1000).toFixed(2)}s` : 'Leader'}
+                  {gapMs > 0 ? `${gapMs.toFixed(2)}s` : 'Leader'}
                 </div>
               </div>
 
