@@ -42,6 +42,7 @@ const App: React.FC = () => {
     pitNotifications,
     dismissPitNotification,
     dataQuality,
+    mapData,
   } = useF1Data();
 
   // Analytics engine
@@ -220,7 +221,7 @@ const App: React.FC = () => {
                 session={session}
                 currentLap={currentLap}
                 isLoading={isLoading}
-                dataQuality={dataQuality}
+                mapData={mapData}
               />
             </section>
 

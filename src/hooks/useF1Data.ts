@@ -5,14 +5,16 @@ import type {
   Lap,
   Stint,
   PitStop,
-  Location,
   Session,
   DriverStanding,
   PitNotification,
 } from '../types/f1';
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
+import type { TrackMapData } from '../types/map';
+import { INITIAL_TRACK_MAP_DATA } from '../types/map';
 import { getOpenF1Data } from '../services/openf1/client';
+import { loadSessionLocationMap } from '../services/openf1/location';
 import {
   getSessionPhase,
   isRaceSession,
@@ -136,6 +138,7 @@ export interface F1DataState {
   selectedRaceKey: number | null;
   setSelectedRaceKey: (key: number | null) => void;
   dataQuality: DataQuality;
+  mapData: TrackMapData;
 }
 
 export function useF1Data(): F1DataState {
@@ -150,10 +153,16 @@ export function useF1Data(): F1DataState {
   const [availableRaces, setAvailableRaces] = useState<Session[]>([]);
   const [selectedRaceKey, setSelectedRaceKeyState] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
+  const [mapData, setMapData] = useState<TrackMapData>(INITIAL_TRACK_MAP_DATA);
 
   // Caching references
   const sessionListCacheRef = useRef<Session[] | null>(null);
-  const raceDataCacheRef = useRef<Map<number, { standings: DriverStanding[], maxLap: number, totalLaps: number }>>(new Map());
+  const raceDataCacheRef = useRef<Map<number, {
+    standings: DriverStanding[];
+    maxLap: number;
+    totalLaps: number;
+    mapData: TrackMapData;
+  }>>(new Map());
   const requestGenerationRef = useRef(0);
 
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
@@ -180,6 +189,7 @@ export function useF1Data(): F1DataState {
     setIsLoading(true);
     setError(null);
     setDataQuality(INITIAL_DATA_QUALITY);
+    setMapData(INITIAL_TRACK_MAP_DATA);
     prevPitDataRef.current = new Map();
     prevPitSessionKeyRef.current = null;
   }, [availableRaces]);
@@ -241,6 +251,14 @@ export function useF1Data(): F1DataState {
             freshness: 'unknown',
             message: 'The selected session is not present in the session catalogue',
           }));
+          setMapData({
+            ...INITIAL_TRACK_MAP_DATA,
+            quality: createDataQuality('unavailable', {
+              availability: 'error',
+              message: 'Selected session is unavailable',
+            }),
+            mode: 'unavailable',
+          });
           return;
         }
 
@@ -252,6 +270,13 @@ export function useF1Data(): F1DataState {
         setStandings(demoStandings);
         setSession(null);
         setDataQuality(createDataQuality('demo', { message: 'OpenF1 session data is unavailable' }));
+        setMapData({
+          geometry: [],
+          positions: [],
+          quality: createDataQuality('demo', { message: 'Demo map simulation' }),
+          mode: 'demo',
+          snapshotAt: null,
+        });
         setIsLoading(false);
         return;
       }
@@ -274,6 +299,16 @@ export function useF1Data(): F1DataState {
           freshness: 'fresh',
           message: 'Upcoming session; race data is not available yet',
         }));
+        setMapData({
+          geometry: [],
+          positions: [],
+          quality: createDataQuality('unavailable', {
+            availability: 'empty',
+            message: 'Upcoming session has no location data',
+          }),
+          mode: 'unavailable',
+          snapshotAt: null,
+        });
         return;
       }
 
@@ -283,6 +318,15 @@ export function useF1Data(): F1DataState {
         setStandings(cached.standings);
         setCurrentLap(cached.maxLap);
         setTotalLaps(cached.totalLaps);
+        setMapData({
+          ...cached.mapData,
+          quality: createDataQuality('cache', {
+            freshness: 'stale',
+            updatedAt: cached.mapData.quality.updatedAt,
+            message: 'Showing cached completed-session map data',
+          }),
+          mode: cached.mapData.positions.length > 0 ? 'stale' : cached.mapData.mode,
+        });
         setIsLive(false);
         setIsLoading(false);
         setError(null);
@@ -291,13 +335,12 @@ export function useF1Data(): F1DataState {
       }
 
       // 4. Fetch all race data in parallel
-      const [drivers, rawPositions, laps, stints, pits, locations] = await Promise.allSettled([
+      const [drivers, rawPositions, laps, stints, pits] = await Promise.allSettled([
         getOpenF1Data<Driver[]>(`/drivers?session_key=${sk}`),
         getOpenF1Data<Position[]>(`/position?session_key=${sk}`),
         getOpenF1Data<Lap[]>(`/laps?session_key=${sk}`),
         getOpenF1Data<Stint[]>(`/stints?session_key=${sk}`),
         getOpenF1Data<PitStop[]>(`/pit?session_key=${sk}`),
-        getOpenF1Data<Location[]>(`/location?session_key=${sk}`),
       ]);
 
       if (!isCurrentRequest()) return;
@@ -307,8 +350,7 @@ export function useF1Data(): F1DataState {
       const lapsData: Lap[] = fulfilledArray(laps);
       const stintsData: Stint[] = fulfilledArray(stints);
       const pitsData: PitStop[] = fulfilledArray(pits);
-      const locationsData: Location[] = fulfilledArray(locations);
-      const isPartialResponse = hasRejected([drivers, rawPositions, laps, stints, pits, locations]);
+      const isPartialResponse = hasRejected([drivers, rawPositions, laps, stints, pits]);
 
       if (driversData.length === 0) {
         if (selectedRaceKey !== null) {
@@ -320,6 +362,14 @@ export function useF1Data(): F1DataState {
             freshness: 'fresh',
             message: 'No driver data is available for the selected session',
           }));
+          setMapData({
+            ...INITIAL_TRACK_MAP_DATA,
+            quality: createDataQuality('unavailable', {
+              availability: 'empty',
+              message: 'No drivers are available for map positions',
+            }),
+            mode: 'unavailable',
+          });
           return;
         }
 
@@ -328,9 +378,19 @@ export function useF1Data(): F1DataState {
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
         setDataQuality(createDataQuality('demo', { message: 'No driver data was returned by OpenF1' }));
+        setMapData({
+          geometry: [],
+          positions: [],
+          quality: createDataQuality('demo', { message: 'Demo map simulation' }),
+          mode: 'demo',
+          snapshotAt: null,
+        });
         setIsLoading(false);
         return;
       }
+
+      const nextMapData = await loadSessionLocationMap(targetSession, lapsData);
+      if (!isCurrentRequest()) return;
 
       // Build data maps
       const latestPos = new Map<number, Position>();
@@ -363,8 +423,8 @@ export function useF1Data(): F1DataState {
         pitCount.set(p.driver_number, (pitCount.get(p.driver_number) ?? 0) + 1);
       }
 
-      const latestLocation = new Map<number, Location>();
-      for (const loc of locationsData) {
+      const latestLocation = new Map<number, TrackMapData['positions'][number]>();
+      for (const loc of nextMapData.positions) {
         const existing = latestLocation.get(loc.driver_number);
         if (!existing || loc.date > existing.date) latestLocation.set(loc.driver_number, loc);
       }
@@ -465,10 +525,12 @@ export function useF1Data(): F1DataState {
           standings: finalStandings,
           maxLap,
           totalLaps: isRace ? (raceLapCount ?? 0) : 0,
+          mapData: nextMapData,
         });
       }
 
       setStandings(finalStandings);
+      setMapData(nextMapData);
       setIsLive(isLiveSession);
       setError(null);
       setDataQuality(createDataQuality('openf1', {
@@ -491,12 +553,27 @@ export function useF1Data(): F1DataState {
           freshness: 'unknown',
           message: msg,
         }));
+        setMapData({
+          ...INITIAL_TRACK_MAP_DATA,
+          quality: createDataQuality('unavailable', {
+            availability: 'error',
+            message: msg,
+          }),
+          mode: 'unavailable',
+        });
       } else if (standingsRef.current.length === 0) {
         if (demoLapRef.current < 57) demoLapRef.current += 1;
         setCurrentLap(demoLapRef.current);
         setTotalLaps(57);
         setStandings(buildDemoStandings(demoLapRef.current));
         setDataQuality(createDataQuality('demo', { message: 'OpenF1 failed; showing deterministic demo data' }));
+        setMapData({
+          geometry: [],
+          positions: [],
+          quality: createDataQuality('demo', { message: 'Demo map simulation' }),
+          mode: 'demo',
+          snapshotAt: null,
+        });
       } else {
         setDataQuality(createDataQuality('cache', {
           availability: 'partial',
@@ -559,5 +636,6 @@ export function useF1Data(): F1DataState {
     selectedRaceKey,
     setSelectedRaceKey,
     dataQuality,
+    mapData,
   };
 }

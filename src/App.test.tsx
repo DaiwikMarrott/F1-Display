@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildDemoStandings, useF1Data } from './hooks/useF1Data';
 import useAnalytics, { calculateAnalytics } from './hooks/useAnalytics';
 import App from './App';
+import { INITIAL_TRACK_MAP_DATA } from './types/map';
 
 vi.mock('./hooks/useF1Data', async importOriginal => {
   const actual = await importOriginal<typeof import('./hooks/useF1Data')>();
@@ -82,6 +83,7 @@ describe('App critical UI flows', () => {
         updatedAt: 1,
         message: 'Demo fixture',
       },
+      mapData: INITIAL_TRACK_MAP_DATA,
     });
     vi.mocked(useAnalytics).mockReturnValue(analytics);
   });

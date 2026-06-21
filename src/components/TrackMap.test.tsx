@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { Session } from '../types/f1';
 import { createDataQuality } from '../types/dataQuality';
+import type { TrackMapData } from '../types/map';
 import TrackMap from './TrackMap';
 
 function session(overrides: Partial<Session>): Session {
@@ -19,6 +20,17 @@ function session(overrides: Partial<Session>): Session {
   };
 }
 
+function mapData(overrides: Partial<TrackMapData> = {}): TrackMapData {
+  return {
+    geometry: [],
+    positions: [],
+    quality: createDataQuality('unavailable', { availability: 'empty' }),
+    mode: 'unavailable',
+    snapshotAt: null,
+    ...overrides,
+  };
+}
+
 describe('TrackMap circuit states', () => {
   it('renders the selected circuit instead of a country fallback', () => {
     render(
@@ -27,7 +39,7 @@ describe('TrackMap circuit states', () => {
         session={session({})}
         currentLap={0}
         isLoading={false}
-        dataQuality={createDataQuality('unavailable', { availability: 'empty' })}
+        mapData={mapData()}
       />,
     );
 
@@ -43,7 +55,7 @@ describe('TrackMap circuit states', () => {
         session={session({ circuit_short_name: 'Imaginary Ring' })}
         currentLap={0}
         isLoading={false}
-        dataQuality={createDataQuality('unavailable', { availability: 'empty' })}
+        mapData={mapData()}
       />,
     );
 
@@ -61,7 +73,7 @@ describe('TrackMap circuit states', () => {
         })}
         currentLap={0}
         isLoading={false}
-        dataQuality={createDataQuality('unavailable', { availability: 'empty' })}
+        mapData={mapData()}
       />,
     );
 
@@ -69,14 +81,13 @@ describe('TrackMap circuit states', () => {
   });
 
   it('replaces the map identity when the selected session changes', () => {
-    const quality = createDataQuality('unavailable', { availability: 'empty' });
     const { rerender } = render(
       <TrackMap
         standings={[]}
         session={session({})}
         currentLap={0}
         isLoading={false}
-        dataQuality={quality}
+        mapData={mapData()}
       />,
     );
 
@@ -92,7 +103,7 @@ describe('TrackMap circuit states', () => {
         })}
         currentLap={0}
         isLoading={false}
-        dataQuality={quality}
+        mapData={mapData()}
       />,
     );
 

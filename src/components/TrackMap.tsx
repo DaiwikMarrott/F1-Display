@@ -1,8 +1,14 @@
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import type { DriverStanding, Location, Session } from '../types/f1';
-import type { DataQuality } from '../types/dataQuality';
+import type { DriverStanding, Session } from '../types/f1';
+import type { TrackMapData } from '../types/map';
 import { getCircuitForSession } from '../data/circuits';
 import { getSessionPhase } from '../domain/sessionSelection';
+import {
+  createTrackProjection,
+  geometryToSvgPath,
+  getTrackMapLabel,
+  latestLocationPerDriver,
+} from '../domain/trackProjection';
 import DriverTooltip from './DriverTooltip';
 import './TrackMap.css';
 
@@ -11,7 +17,7 @@ interface Props {
   session: Session | null;
   currentLap?: number;
   isLoading: boolean;
-  dataQuality: DataQuality;
+  mapData: TrackMapData;
 }
 
 const SVG_WIDTH = 900;
@@ -99,14 +105,21 @@ const TrackMap: React.FC<Props> = ({
   session,
   currentLap = 1,
   isLoading,
-  dataQuality,
+  mapData,
 }) => {
   const displayCircuit = getCircuitForSession(session);
   const sessionPhase = session ? getSessionPhase(session) : 'unknown';
-  const hasLocations = standings.some(s => s.location !== null);
   const showMarkers = !isLoading && sessionPhase !== 'upcoming';
 
-  const trackSvgPath = displayCircuit?.svgPath || null;
+  const projection = useMemo(
+    () => createTrackProjection(mapData.geometry, SVG_WIDTH, SVG_HEIGHT, 70),
+    [mapData.geometry],
+  );
+  const openF1TrackPath = useMemo(
+    () => projection ? geometryToSvgPath(mapData.geometry, projection) : null,
+    [mapData.geometry, projection],
+  );
+  const trackSvgPath = openF1TrackPath || displayCircuit?.svgPath || null;
   const startPoint = trackSvgPath ? getPathStart(trackSvgPath) : null;
   const mapStatus = isLoading
     ? 'LOADING MAP'
@@ -114,9 +127,7 @@ const TrackMap: React.FC<Props> = ({
       ? 'UPCOMING — NO POSITION DATA'
       : !displayCircuit
         ? 'CIRCUIT LAYOUT UNAVAILABLE'
-        : hasLocations
-          ? dataQuality.provenance === 'cache' ? 'CACHED POSITIONS' : 'OPENF1 POSITIONS'
-          : standings.length > 0 ? 'ESTIMATED POSITIONS' : 'NO POSITION DATA';
+        : getTrackMapLabel(mapData);
 
   // Tooltip state
   const [hoveredDriver, setHoveredDriver] = useState<DriverStanding | null>(null);
@@ -139,46 +150,20 @@ const TrackMap: React.FC<Props> = ({
   const driverPositionsMap = useMemo(() => {
     if (!showMarkers) return new Map();
 
-    if (hasLocations && trackSvgPath) {
-      // If we have real location data, map it onto the SVG viewport
+    if (projection && mapData.positions.length > 0) {
       const posMap = new Map<number, { x: number; y: number }>();
-      const locs = standings.map(s => s.location).filter((l): l is Location => l !== null);
-
-      if (locs.length === 0 && trackSvgPath) {
-        return getTrackPositions(standings, trackSvgPath, currentLap);
+      for (const location of latestLocationPerDriver(mapData.positions)) {
+        posMap.set(location.driver_number, projection.project(location));
       }
-
-      const xs = locs.map(l => l.x);
-      const ys = locs.map(l => l.y);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      const minY = Math.min(...ys);
-      const maxY = Math.max(...ys);
-      const rangeX = maxX - minX || 1;
-      const rangeY = maxY - minY || 1;
-      const padding = 80;
-
-      standings.forEach(s => {
-        const loc = s.location;
-        if (loc) {
-          posMap.set(s.driver.driver_number, {
-            x: padding + ((loc.x - minX) / rangeX) * (SVG_WIDTH - padding * 2),
-            y: padding + ((loc.y - minY) / rangeY) * (SVG_HEIGHT - padding * 2),
-          });
-        } else {
-          posMap.set(s.driver.driver_number, { x: SVG_WIDTH / 2, y: SVG_HEIGHT / 2 });
-        }
-      });
       return posMap;
     }
 
-    // Use simulated positions along the track path
     if (trackSvgPath) {
       return getTrackPositions(standings, trackSvgPath, currentLap);
     }
 
     return new Map();
-  }, [standings, hasLocations, trackSvgPath, currentLap, showMarkers]);
+  }, [standings, mapData.positions, projection, trackSvgPath, currentLap, showMarkers]);
 
   return (
     <div

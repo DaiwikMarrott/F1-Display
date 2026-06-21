@@ -2,10 +2,15 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Driver, Session } from '../types/f1';
 import { getOpenF1Data } from '../services/openf1/client';
+import { INITIAL_TRACK_MAP_DATA } from '../types/map';
 import { buildDemoStandings, useF1Data } from './useF1Data';
 
 vi.mock('../services/openf1/client', () => ({
   getOpenF1Data: vi.fn(),
+}));
+
+vi.mock('../services/openf1/location', () => ({
+  loadSessionLocationMap: vi.fn().mockResolvedValue(INITIAL_TRACK_MAP_DATA),
 }));
 
 function session(overrides: Partial<Session>): Session {
