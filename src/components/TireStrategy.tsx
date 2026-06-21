@@ -1,10 +1,11 @@
 import React from 'react';
 import type { TireAnalysis } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
 import './TireStrategy.css';
 
 interface Props {
   tireAnalysis: Map<number, TireAnalysis>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }

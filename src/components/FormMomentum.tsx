@@ -1,10 +1,10 @@
-import React from 'react';
 import type { DriverForm } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
 import './FormMomentum.css';
 
 interface Props {
   formData: Map<number, DriverForm>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -30,11 +30,10 @@ export default function FormMomentum({ formData, standings, currentLap, totalLap
   }
 
   const rows = Array.from(formData.values())
-    .map(form => ({
-      form,
-      standing: standings.find(s => s.driver.driver_number === form.driver_number),
-    }))
-    .filter(row => !!row.standing)
+    .flatMap(form => {
+      const standing = standings.find(s => s.driver.driver_number === form.driver_number);
+      return standing ? [{ form, standing }] : [];
+    })
     .sort((a, b) => a.standing.position - b.standing.position);
 
   return (
@@ -46,7 +45,7 @@ export default function FormMomentum({ formData, standings, currentLap, totalLap
 
       <div className="form-momentum__container">
         {rows.map(({ form, standing }) => {
-          const driverCode = standing.driver.driver_number_display || `D${form.driver_number}`;
+          const driverCode = standing.driver.name_acronym || `D${form.driver_number}`;
           const momentum = Math.max(-100, Math.min(100, form.momentumScore));
           const trendClass = form.trend;
           const consistency = Math.max(0, Math.min(100, form.consistency));

@@ -1,10 +1,10 @@
-import React from 'react';
 import type { StrategyRecommendation } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
 import './StrategyAdvisor.css';
 
 interface Props {
   strategies: Map<number, StrategyRecommendation>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -37,11 +37,10 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
   }
 
   const strategyRows = Array.from(strategies.values())
-    .map(strategy => {
+    .flatMap(strategy => {
       const standing = standings.find(s => s.driver.driver_number === strategy.driver_number);
-      return { strategy, standing };
+      return standing ? [{ strategy, standing }] : [];
     })
-    .filter(row => !!row.standing)
     .sort((a, b) => a.standing.position - b.standing.position);
 
   return (
@@ -53,7 +52,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
 
       <div className="strategy-advisor__container">
         {strategyRows.map(({ strategy, standing }) => {
-          const driverCode = standing.driver.driver_number_display || `D${strategy.driver_number}`;
+          const driverCode = standing.driver.name_acronym || `D${strategy.driver_number}`;
           const actionClass = ACTION_CLASS[strategy.recommendedAction];
           const confidence = Math.max(0, Math.min(100, Math.round(strategy.confidence)));
           const fuelRemain = Math.max(0, strategy.estimatedFuelRemaining);

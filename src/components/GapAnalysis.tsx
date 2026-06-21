@@ -1,10 +1,10 @@
-import React from 'react';
 import { GapTrend } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
 import './GapAnalysis.css';
 
 interface Props {
   gapTrends: Map<number, GapTrend>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -79,7 +79,7 @@ export default function GapAnalysis({ gapTrends, standings, currentLap, totalLap
           if (!standing) return null;
 
           const position = standing.position;
-          const driverCode = standing.driver.driver_number_display || `D${driverNum}`;
+          const driverCode = standing.driver.name_acronym || `D${driverNum}`;
           const gapMs = gapData.gapToLeader;
           const trendColor = getGapTrendColor(gapData.gapTrend);
           const drsWindow = gapData.drsWindow;

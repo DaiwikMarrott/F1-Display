@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useCallback } from 'react';
-import type { DriverStanding } from '../types/f1';
+import type { DriverStanding, Location } from '../types/f1';
 import { getCircuitByCountry } from '../data/circuits';
 import DriverTooltip from './DriverTooltip';
 import './TrackMap.css';
@@ -133,7 +133,7 @@ const TrackMap: React.FC<Props> = ({ standings, raceCountry, currentLap = 1 }) =
     if (hasLocations && trackSvgPath) {
       // If we have real location data, map it onto the SVG viewport
       const posMap = new Map<number, { x: number; y: number }>();
-      const locs = standings.map(s => s.location).filter((l): l is any => l !== null);
+      const locs = standings.map(s => s.location).filter((l): l is Location => l !== null);
 
       if (locs.length === 0 && trackSvgPath) {
         return getTrackPositions(standings, trackSvgPath, currentLap);

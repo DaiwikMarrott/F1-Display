@@ -147,6 +147,8 @@ export function useF1Data(): F1DataState {
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
+  const sessionRef = useRef<Session | null>(null);
+  sessionRef.current = session;
   const demoLapRef = useRef(14);
   const demoModeRef = useRef(false);
 
@@ -156,7 +158,7 @@ export function useF1Data(): F1DataState {
 
   const fetchData = useCallback(async () => {
     // Determine if switching to a new race (optimistic loading state)
-    if (selectedRaceKey && session && selectedRaceKey !== session.session_key && !raceDataCacheRef.current.has(selectedRaceKey)) {
+    if (selectedRaceKey && sessionRef.current && selectedRaceKey !== sessionRef.current.session_key && !raceDataCacheRef.current.has(selectedRaceKey)) {
       setIsLoading(true);
     }
 
@@ -175,10 +177,10 @@ export function useF1Data(): F1DataState {
         } catch (e) {
           console.warn('Failed to fetch sessions, injecting fallback DEMO races:', e);
           sessionsResp = [
-            { session_key: 9158, session_name: "Race", date_start: "2024-03-02T15:00:00", date_end: "2024-03-02T17:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1229, location: "Sakhir", country_key: 36, country_code: "BRN", country_name: "Bahrain", circuit_key: 63, circuit_short_name: "Sakhir" },
-            { session_key: 9166, session_name: "Race", date_start: "2024-03-09T17:00:00", date_end: "2024-03-09T19:00:00", gmt_offset: "03:00", session_type: "Race", meeting_key: 1230, location: "Jeddah", country_key: 153, country_code: "KSA", country_name: "Saudi Arabia", circuit_key: 149, circuit_short_name: "Jeddah" },
-            { session_key: 9173, session_name: "Race", date_start: "2024-03-24T04:00:00", date_end: "2024-03-24T06:00:00", gmt_offset: "11:00", session_type: "Race", meeting_key: 1231, location: "Melbourne", country_key: 5, country_code: "AUS", country_name: "Australia", circuit_key: 10, circuit_short_name: "Melbourne" },
-          ] as any[];
+            { session_key: 9158, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
+            { session_key: 9166, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
+            { session_key: 9173, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
+          ];
           sessionListCacheRef.current = sessionsResp;
         }
       }

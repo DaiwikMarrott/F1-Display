@@ -38,7 +38,6 @@ function calculateTireAnalysis(
   
   // Pit window: optimal when tire is at 60-75% life
   const optimalStart = Math.ceil(maxAge * 0.6);
-  const optimalEnd = Math.ceil(maxAge * 0.75);
   const optimalPitLap = currentLap + Math.max(1, optimalStart - age);
   
   // Condition percent for visual: 100% = new, 0% = end of life
@@ -46,7 +45,7 @@ function calculateTireAnalysis(
   
   return {
     driver_number: standing.driver.driver_number,
-    compound: compound as any,
+    compound,
     age,
     maxAge,
     degradationRate,
@@ -63,11 +62,10 @@ function calculateTireAnalysis(
  */
 function calculateSectorData(
   standing: DriverStanding,
-  leaderLapTime: number,
-  allStandings: DriverStanding[]
+  leaderLapTime: number
 ): SectorData {
   // Sector distribution in typical lap: S1=33%, S2=40%, S3=27%
-  const totalTime = standing.lastLap;
+  const totalTime = standing.lastLap ?? standing.bestLap ?? 0;
   const sector1 = totalTime * 0.33;
   const sector2 = totalTime * 0.40;
   const sector3 = totalTime * 0.27;
@@ -121,9 +119,7 @@ function calculateSectorData(
  * Calculate gap trends and overtake probability
  */
 function calculateGapTrend(
-  standing: DriverStanding,
-  currentLap: number,
-  totalLaps: number
+  standing: DriverStanding
 ): GapTrend {
   const gapSeconds = standing.gapToLeader === 'LEADER' ? 0 
     : parseFloat(standing.gapToLeader.replace('+', '')) || 0;
@@ -197,7 +193,7 @@ function calculateStrategyRecommendation(
   
   // Optimal next stop
   const optimalLap = tireAnalysis.optimalPitLap;
-  const nextCompound = tireAnalysis.age > 15 ? 'HARD' : 'MEDIUM';
+  const nextCompound: 'HARD' | 'MEDIUM' = tireAnalysis.age > 15 ? 'HARD' : 'MEDIUM';
   const gainSeconds = Math.max(0, tireAnalysis.performanceLoss * 0.5);
   
   // Predict finish position
@@ -213,10 +209,14 @@ function calculateStrategyRecommendation(
     confidence: Math.round(74 + Math.random() * 16),
   };
 
+  const currentDryCompound = tireAnalysis.compound === 'INTERMEDIATE' || tireAnalysis.compound === 'WET'
+    ? 'MEDIUM' as const
+    : tireAnalysis.compound;
+
   const stayOutScenario = {
     label: 'Stay out',
     action: 'stay-out' as const,
-    compound: tireAnalysis.compound,
+    compound: currentDryCompound,
     pitLap: Math.min(totalLaps, currentLap + Math.max(1, Math.ceil(tireLapsRemaining / 2))),
     projectedFinishPosition: Math.max(1, standing.position + Math.round((standing.tireAge > 18 ? 2 : 1) + Math.random() * 2)),
     projectedTimeGain: Number(Math.max(0, tireAnalysis.performanceLoss * 0.15).toFixed(1)),
@@ -226,7 +226,7 @@ function calculateStrategyRecommendation(
   const pushScenario = {
     label: 'Push',
     action: 'push' as const,
-    compound: tireAnalysis.compound,
+    compound: currentDryCompound,
     pitLap: Math.min(totalLaps, currentLap + 1),
     projectedFinishPosition: Math.max(1, standing.position - Math.round(Math.random() * 2)),
     projectedTimeGain: Number((Math.max(0, tireAnalysis.performanceLoss * 0.25) + fuelSavingPotential * 0.1).toFixed(1)),
@@ -247,7 +247,7 @@ function calculateStrategyRecommendation(
     fuelSavingPotential,
     optimalNextStop: {
       lapNumber: optimalLap,
-      compound: nextCompound as any,
+      compound: nextCompound,
       gainSeconds,
     },
     whatIfScenarios: [pitNowScenario, stayOutScenario, pushScenario],
@@ -261,14 +261,12 @@ function calculateStrategyRecommendation(
  * Calculate driver form and momentum
  */
 function calculateDriverForm(
-  standing: DriverStanding,
-  currentLap: number
+  standing: DriverStanding
 ): DriverForm {
   // Simulate last 5 lap times with degradation trend
   const last5Laps: number[] = [];
-  const baseLap = standing.bestLap;
+  const baseLap = standing.bestLap ?? standing.lastLap ?? 0;
   for (let i = -4; i <= 0; i++) {
-    const lapNum = currentLap + i;
     const degradation = Math.abs(i) * 0.15 * Math.random(); // each lap degrades slightly
     last5Laps.push(baseLap + degradation);
   }
@@ -309,8 +307,7 @@ function calculateDriverForm(
  * Calculate telemetry data
  */
 function calculateTelemetryData(
-  standing: DriverStanding,
-  location: any | null
+  standing: DriverStanding
 ): TelemetryData {
   // Simulate realistic telemetry
   const baseSpeed = 300 + standing.position * 2; // faster drivers slightly faster
@@ -355,17 +352,17 @@ export function useAnalytics(
         tireAnalysis.set(driverNum, tire);
       }
       
-      sectors.set(driverNum, calculateSectorData(standing, leaderLapTime, standings));
+      sectors.set(driverNum, calculateSectorData(standing, leaderLapTime));
       
-      gapTrends.set(driverNum, calculateGapTrend(standing, currentLap, totalLaps));
+      gapTrends.set(driverNum, calculateGapTrend(standing));
       
       if (tire) {
         strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
       }
       
-      formData.set(driverNum, calculateDriverForm(standing, currentLap));
+      formData.set(driverNum, calculateDriverForm(standing));
       
-      telemetry.set(driverNum, calculateTelemetryData(standing, standing.location));
+      telemetry.set(driverNum, calculateTelemetryData(standing));
     });
     
     return {

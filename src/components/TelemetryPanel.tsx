@@ -1,9 +1,10 @@
 import type { TelemetryData } from '../types/analytics';
+import type { DriverStanding } from '../types/f1';
 import './TelemetryPanel.css';
 
 interface Props {
   telemetry: Map<number, TelemetryData>;
-  standings: any[];
+  standings: DriverStanding[];
   currentLap: number;
   totalLaps: number;
 }
@@ -22,11 +23,10 @@ export default function TelemetryPanel({ telemetry, standings, currentLap, total
   }
 
   const rows = Array.from(telemetry.values())
-    .map(t => ({
-      telemetry: t,
-      standing: standings.find(s => s.driver.driver_number === t.driver_number),
-    }))
-    .filter(row => !!row.standing)
+    .flatMap(t => {
+      const standing = standings.find(s => s.driver.driver_number === t.driver_number);
+      return standing ? [{ telemetry: t, standing }] : [];
+    })
     .sort((a, b) => a.standing.position - b.standing.position);
 
   const maxSpeed = Math.max(...rows.map(r => r.telemetry.topSpeed), 1);

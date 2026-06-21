@@ -106,7 +106,7 @@ const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) =>
       </div>
 
       <div className="live-standings__list">
-        {standings.slice(0, 10).map((standing, index) => {
+        {standings.slice(0, 10).map((standing) => {
           const teamColor = `#${standing.driver.team_colour || 'ffffff'}`;
           const tracker = positionTrackers.get(standing.driver.driver_number);
           const isAnimating = animatingDrivers.has(standing.driver.driver_number);

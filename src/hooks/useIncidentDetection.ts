@@ -9,7 +9,7 @@ import type { Incident } from '../types/analytics';
 export function useIncidentDetection(
     standings: DriverStanding[],
     currentLap: number,
-    totalLaps: number
+    _totalLaps: number
 ): Incident[] {
     return useMemo(() => {
         if (standings.length === 0 || currentLap <= 0) return [];
@@ -23,7 +23,7 @@ export function useIncidentDetection(
         const vscProbability = 0.015;
 
         // Check for potential incidents based on position data
-        standings.forEach((standing, idx) => {
+        standings.forEach((standing) => {
             const gapSec = standing.gapToLeader === 'LEADER' ? 0
                 : parseFloat(standing.gapToLeader.replace('+', '')) || 0;
 
@@ -116,5 +116,5 @@ export function useIncidentDetection(
 
         // Sort by lap descending (most recent first)
         return incidents.sort((a, b) => b.lap - a.lap);
-    }, [standings, currentLap, totalLaps]);
+    }, [standings, currentLap]);
 }
