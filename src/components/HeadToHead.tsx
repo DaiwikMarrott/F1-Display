@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { DriverStanding } from '../types/f1';
 import type { AnalyticsState } from '../types/analytics';
+import {
+    loadSeasonSummary,
+    type SeasonSummary,
+} from '../services/openf1/seasonSummary';
 import './HeadToHead.css';
 
 interface SessionLite {
     session_key: number;
     date_start: string;
+    date_end: string;
     country_name: string;
     circuit_short_name: string;
     session_name: string;
@@ -19,38 +24,13 @@ interface Props {
     availableRaces: SessionLite[];
 }
 
-interface SeasonSummary {
-    racesAnalyzed: number;
-    averageFinish: number;
-    bestFinish: number;
-    podiums: number;
-    wins: number;
-    points: number;
-    lastResult: number | null;
-}
-
-async function fetchJSON<T>(url: string): Promise<T> {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-    return response.json() as Promise<T>;
-}
-
-function pointsForFinish(position: number): number {
-    if (position === 1) return 25;
-    if (position === 2) return 18;
-    if (position === 3) return 15;
-    if (position === 4) return 12;
-    if (position === 5) return 10;
-    if (position === 6) return 8;
-    if (position === 7) return 6;
-    if (position === 8) return 4;
-    if (position === 9) return 2;
-    if (position === 10) return 1;
-    return 0;
-}
+type SeasonStatus = 'loading' | 'success' | 'partial' | 'empty' | 'error';
 
 export default function HeadToHead({ standings, analytics, availableRaces }: Props) {
     const [seasonStats, setSeasonStats] = useState<Record<number, SeasonSummary | null>>({});
+    const [seasonStatus, setSeasonStatus] = useState<SeasonStatus>('loading');
+    const [seasonMessage, setSeasonMessage] = useState('Loading recent race results');
+    const [retryToken, setRetryToken] = useState(0);
     const [driver1Num, setDriver1Num] = useState<number>(standings[0]?.driver.driver_number || 1);
     const [driver2Num, setDriver2Num] = useState<number>(standings[1]?.driver.driver_number || 16);
 
@@ -58,6 +38,7 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
         const seen = new Set<string>();
         return availableRaces
             .filter(race => race.session_type.toLowerCase() === 'race')
+            .filter(race => Date.parse(race.date_end) <= Date.now())
             .filter(race => {
                 const raceId = `${race.country_name}_${race.circuit_short_name}`;
                 if (seen.has(raceId)) return false;
@@ -71,66 +52,63 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
     useEffect(() => {
         let cancelled = false;
 
-        async function loadSeasonSummary(driverNumber: number): Promise<SeasonSummary | null> {
-            if (recentRaces.length === 0) return null;
-
-            const results = await Promise.allSettled(
-                recentRaces.map(async race => {
-                    const positions = await fetchJSON<Array<{ driver_number: number; position: number; date: string }>>(
-                        `https://api.openf1.org/v1/position?session_key=${race.session_key}`
-                    );
-                    const driverRows = positions
-                        .filter(row => row.driver_number === driverNumber)
-                        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-                    const finalRow = driverRows[driverRows.length - 1];
-                    return finalRow ? finalRow.position : null;
-                })
-            );
-
-            const finishes = results
-                .filter((result): result is PromiseFulfilledResult<number | null> => result.status === 'fulfilled')
-                .map(result => result.value)
-                .filter((value): value is number => typeof value === 'number' && value > 0);
-
-            if (finishes.length === 0) return null;
-
-            const averageFinish = finishes.reduce((sum, value) => sum + value, 0) / finishes.length;
-            const bestFinish = Math.min(...finishes);
-            const podiums = finishes.filter(value => value <= 3).length;
-            const wins = finishes.filter(value => value === 1).length;
-            const points = finishes.reduce((sum, value) => sum + pointsForFinish(value), 0);
-
-            return {
-                racesAnalyzed: finishes.length,
-                averageFinish,
-                bestFinish,
-                podiums,
-                wins,
-                points,
-                lastResult: finishes[0] ?? null,
+        if (recentRaces.length === 0) {
+            setSeasonStats({});
+            setSeasonStatus('empty');
+            setSeasonMessage('No completed race data available');
+            return () => {
+                cancelled = true;
             };
         }
 
-        Promise.all([loadSeasonSummary(driver1Num), loadSeasonSummary(driver2Num)])
-            .then(([driver1Stats, driver2Stats]) => {
+        setSeasonStatus('loading');
+        setSeasonMessage('Loading recent race results');
+
+        Promise.allSettled([
+            loadSeasonSummary(driver1Num, recentRaces),
+            loadSeasonSummary(driver2Num, recentRaces),
+        ])
+            .then(([driver1Result, driver2Result]) => {
                 if (cancelled) return;
+                if (driver1Result.status === 'rejected' && driver2Result.status === 'rejected') {
+                    setSeasonStats({});
+                    setSeasonStatus('error');
+                    setSeasonMessage('Unable to load recent race results');
+                    return;
+                }
+
+                const driver1Stats = driver1Result.status === 'fulfilled' ? driver1Result.value : null;
+                const driver2Stats = driver2Result.status === 'fulfilled' ? driver2Result.value : null;
                 setSeasonStats({
                     [driver1Num]: driver1Stats,
                     [driver2Num]: driver2Stats,
                 });
-            })
-            .catch(() => {
-                if (cancelled) return;
-                setSeasonStats({
-                    [driver1Num]: null,
-                    [driver2Num]: null,
-                });
+                if (!driver1Stats && !driver2Stats) {
+                    setSeasonStatus('empty');
+                    setSeasonMessage('No completed race results found for these drivers');
+                } else if (!driver1Stats || !driver2Stats) {
+                    setSeasonStatus('partial');
+                    setSeasonMessage('Partial season data');
+                } else {
+                    setSeasonStatus('success');
+                    setSeasonMessage(`Based on up to ${recentRaces.length} recent races`);
+                }
             });
 
         return () => {
             cancelled = true;
         };
-    }, [driver1Num, driver2Num, recentRaces]);
+    }, [driver1Num, driver2Num, recentRaces, retryToken]);
+
+    const seasonValue = (
+        driverNumber: number,
+        format: (summary: SeasonSummary) => string,
+    ): string => {
+        if (seasonStatus === 'loading') return 'LOADING';
+        if (seasonStatus === 'error') return 'ERROR';
+        const summary = seasonStats[driverNumber];
+        return summary ? format(summary) : 'N/A';
+    };
 
     const getDriverData = (num: number) => {
         const standing = standings.find(s => s.driver.driver_number === num);
@@ -243,30 +221,38 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
                 </div>
 
                 <div className="h2h-divider">SEASON SNAPSHOT</div>
+                <div className={`h2h-season-state h2h-season-state--${seasonStatus}`}>
+                    <span>{seasonMessage}</span>
+                    {seasonStatus === 'error' && (
+                        <button type="button" onClick={() => setRetryToken(token => token + 1)}>
+                            Retry
+                        </button>
+                    )}
+                </div>
                 <div className="h2h-row">
-                    <div className="h2h-cell h2h-cell--1">{seasonStats[driver1Num] ? `${seasonStats[driver1Num]!.racesAnalyzed}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--1">{seasonValue(driver1Num, summary => `${summary.racesAnalyzed}`)}</div>
                     <div className="h2h-label">RACES</div>
-                    <div className="h2h-cell h2h-cell--2">{seasonStats[driver2Num] ? `${seasonStats[driver2Num]!.racesAnalyzed}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--2">{seasonValue(driver2Num, summary => `${summary.racesAnalyzed}`)}</div>
                 </div>
                 <div className="h2h-row">
-                    <div className="h2h-cell h2h-cell--1">{seasonStats[driver1Num] ? `P${seasonStats[driver1Num]!.bestFinish}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--1">{seasonValue(driver1Num, summary => `P${summary.bestFinish}`)}</div>
                     <div className="h2h-label">BEST</div>
-                    <div className="h2h-cell h2h-cell--2">{seasonStats[driver2Num] ? `P${seasonStats[driver2Num]!.bestFinish}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--2">{seasonValue(driver2Num, summary => `P${summary.bestFinish}`)}</div>
                 </div>
                 <div className="h2h-row">
-                    <div className="h2h-cell h2h-cell--1">{seasonStats[driver1Num] ? `${seasonStats[driver1Num]!.podiums} / ${seasonStats[driver1Num]!.wins}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--1">{seasonValue(driver1Num, summary => `${summary.podiums} / ${summary.wins}`)}</div>
                     <div className="h2h-label">POD/WIN</div>
-                    <div className="h2h-cell h2h-cell--2">{seasonStats[driver2Num] ? `${seasonStats[driver2Num]!.podiums} / ${seasonStats[driver2Num]!.wins}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--2">{seasonValue(driver2Num, summary => `${summary.podiums} / ${summary.wins}`)}</div>
                 </div>
                 <div className="h2h-row">
-                    <div className="h2h-cell h2h-cell--1">{seasonStats[driver1Num] ? `${seasonStats[driver1Num]!.points} pts` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--1">{seasonValue(driver1Num, summary => `${summary.points} pts`)}</div>
                     <div className="h2h-label">POINTS</div>
-                    <div className="h2h-cell h2h-cell--2">{seasonStats[driver2Num] ? `${seasonStats[driver2Num]!.points} pts` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--2">{seasonValue(driver2Num, summary => `${summary.points} pts`)}</div>
                 </div>
                 <div className="h2h-row">
-                    <div className="h2h-cell h2h-cell--1">{seasonStats[driver1Num] ? `P${seasonStats[driver1Num]!.lastResult ?? 0}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--1">{seasonValue(driver1Num, summary => summary.lastResult ? `P${summary.lastResult}` : 'N/A')}</div>
                     <div className="h2h-label">LAST RESULT</div>
-                    <div className="h2h-cell h2h-cell--2">{seasonStats[driver2Num] ? `P${seasonStats[driver2Num]!.lastResult ?? 0}` : 'LOADING'}</div>
+                    <div className="h2h-cell h2h-cell--2">{seasonValue(driver2Num, summary => summary.lastResult ? `P${summary.lastResult}` : 'N/A')}</div>
                 </div>
             </div>
         </div>
