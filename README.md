@@ -1,49 +1,98 @@
 # F1-Display
 
-F1-Display is a React + Vite heads-up display for Formula 1 race analysis. It combines live OpenF1 data, cached race sessions, and simulated analytics so the app stays usable in live mode, replay mode, and API-limited demo mode.
+F1-Display is a React, TypeScript, and Vite Formula 1 heads-up display. The application can show OpenF1 session data, cached replay data, deterministic estimates, and an explicit demo simulation. It labels those sources separately so simulated values are not presented as live facts.
 
-## What the app shows
+## Data provenance
 
-- Top bar: session name, live/demo state, lap counter, race selector, and error status.
-- Left rail: winner probability and live standings.
-- Center stage: circuit-aware track map with hover tooltips.
-- Right rail: tabbed analytics for timing, tires, sectors, gaps, strategy, form, telemetry, incidents, head-to-head, team radio, and weather.
-- Overlay: pit-stop notifications that auto-dismiss after a short delay.
+| Label | Meaning |
+| --- | --- |
+| `OPENF1 DATA` | A successful response from the OpenF1 API. |
+| `CACHED DATA` / `STALE DATA` | A previously successful response retained while offline, cooling down, or revalidating. |
+| `DERIVED` | A deterministic calculation based on available race data. |
+| `ESTIMATED` | A deterministic model where the required live measurement is unavailable. |
+| `DEMO SIMULATION` | Seeded synthetic data used only when the app is explicitly in demo fallback mode. |
+| `UNAVAILABLE` / `WAITING FOR DATA` | The app does not have enough valid information to display the metric. |
 
-## Data Flow
+The analytics source strip above the active panel identifies whether the panel is OpenF1-backed, derived, estimated, or demo-only.
 
-1. `useF1Data` fetches sessions, selects a target race, and loads drivers, positions, laps, stints, pit stops, and location points.
-2. When the API is unavailable, the hook falls back to cached race data or a deterministic demo race so the UI remains populated.
-3. `useAnalytics` derives tire, sector, gap, strategy, form, and telemetry views from the standings and lap context.
-4. `useIncidentDetection` generates incident records for the Alerts tab.
-5. Presentational components render the derived data directly, keeping calculation logic in hooks and display logic in the UI components.
+## OpenF1-backed data
 
-## Core Implementation Methods
+- Session catalogue and session metadata
+- Drivers
+- Position order
+- Lap durations
+- Stints and tire compounds
+- Pit-stop records
+- Location points when the endpoint supplies them
+- Recent final positions used by the head-to-head season snapshot
 
-- Tire strategy: compound lifespan rules, degradation curves, optimal pit lap estimation, and predicted pit-loss time.
-- Sector analysis: lap split simulation from the current lap time, sector deltas, and colored sector status flags.
-- Gap analysis: gap trend, DRS window detection, overtake probability, and laps-until-overtake estimation.
-- Strategy advice: pit-now, stay-out, monitor, or push recommendations with risk and confidence scores.
-- Form and momentum: rolling five-lap averages, consistency scoring, momentum score, and peak-performance window.
-- Telemetry panel: simulated top speed, average speed, acceleration, corner speed, and G-force metrics.
-- Track map: real location points when available, otherwise SVG path sampling with `getPointAtLength()`.
-- Winner probability: position, gap, and laps-remaining scoring normalized into top-five probability bars.
-- Team radio and weather: simulated messages and weather states derived from the current race state.
+OpenF1 position responses used here do not provide trustworthy gap-to-leader timing. The app therefore displays unavailable gaps instead of fabricating live timing.
 
-## Recently Implemented
+## Derived and estimated features
 
-- Strategy Advisor now includes fuel burn estimates, fuel remaining, lift-and-coast gain, and what-if pit scenarios.
-- Head-to-Head now includes season-to-date snapshot data pulled from recent race sessions, including races analyzed, podiums, wins, points, and best finish.
-- Team Radio now renders a chronological transcript with message source labels and a strategy changes log.
+- Tire age and condition are derived from stint and lap context.
+- Winner probability is an unofficial deterministic estimate.
+- Sector splits, strategy scenarios, form, and telemetry are deterministic estimates, not official telemetry.
+- Incident alerts, team radio, and weather are deterministic demo simulations and are labeled as non-live feeds.
+- Track positions use OpenF1 location points when available; otherwise the map explicitly shows simulated positions.
 
-## Implementation Methods Used For Those Updates
+## Reliability behavior
 
-- Strategy Advisor: extended the derived strategy model with fuel burn, estimated fuel left, and scenario objects, then rendered those values as extra metrics and scenario cards.
-- Head-to-Head: fetched recent race position data for the selected drivers, summarized final finishes across recent sessions, and displayed the season snapshot under the current-race comparison.
-- Team Radio: promoted the message feed to a structured transcript, labeled each message by source, and added a timeline-style strategy log built from the generated strategy calls.
+- Identical in-flight requests are deduplicated.
+- Responses use endpoint-specific cache and stale windows.
+- Stale data remains visible while a refresh runs.
+- HTTP 429 responses respect `Retry-After`, use bounded exponential backoff, and establish a shared cooldown.
+- Completed sessions stop polling.
+- Upcoming sessions use a slow metadata cadence and do not request race details.
+- Live sessions refresh on a bounded five-second cadence, while stable and heavier endpoints retain longer TTLs.
+- Polling pauses when the browser tab is hidden.
+- “Latest Race” selects a live Race session or the most recent completed Race; it never silently selects a future event.
+- Session selector entries retain their Race, Sprint, Qualifying, or Practice identity.
+- Known circuits use circuit-specific race lap totals; unknown totals remain unavailable.
 
-## Local Development
+## Development
 
-- Install dependencies with `npm install`.
-- Start the dev server with `npm run dev`.
-- Build production assets with `npm run build`.
+Requirements:
+
+- Node.js 20+ or 22+
+- npm
+
+Commands:
+
+```bash
+npm install
+npm run dev
+npm run typecheck
+npm run lint
+npm test
+npm run test:watch
+npm run test:coverage
+npm run build
+npm run preview
+npm run check
+```
+
+`npm run check` runs typechecking, linting, the complete mocked test suite, and the production build.
+
+Tests use Vitest, React Testing Library, jsdom, and mocked fetch functions. They do not depend on live OpenF1 availability.
+
+## Current limitations
+
+- OpenF1 availability and historical completeness vary by season and endpoint.
+- Circuit lap totals are maintained locally; an unknown or newly introduced circuit may show an unavailable total until metadata is added.
+- The application does not yet ingest official weather, team radio, race-control, interval, or full car-telemetry feeds.
+- Predictions and estimates have not been benchmarked against an external accuracy dataset and must not be treated as official strategy guidance.
+- Browser memory caching is not persisted between page reloads.
+- The application is a client-side MVP and does not provide authentication, a server-side cache, or multi-user persistence.
+
+## Architecture
+
+- `src/services/openf1/` — cached API client, endpoint policies, polling policy, and season summary access
+- `src/domain/` — session selection and analytics provenance rules
+- `src/hooks/useF1Data.ts` — React orchestration over normalized OpenF1 and demo data
+- `src/hooks/useAnalytics.ts` — deterministic derived and estimated analytics
+- `src/types/dataQuality.ts` — source, freshness, availability, and error contracts
+- `src/utils/formatters.ts` — guarded display formatting
+- `src/components/` — presentation and interaction
+
+See `IMPLEMENTATION_PROGRESS.md` for checkpoint history and `FEATURE_PLAN.md` for the current feature/provenance reference.

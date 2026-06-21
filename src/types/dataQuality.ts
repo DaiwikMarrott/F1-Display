@@ -48,6 +48,7 @@ export function getDataQualityLabel(quality: DataQuality): string {
   if (quality.availability === 'loading') return 'WAITING FOR DATA';
   if (quality.availability === 'error') return 'DATA ERROR';
   if (quality.availability === 'empty') return 'NO SESSION DATA';
+  if (quality.availability === 'partial') return 'PARTIAL DATA';
   if (quality.freshness === 'stale') return 'STALE DATA';
 
   switch (quality.provenance) {

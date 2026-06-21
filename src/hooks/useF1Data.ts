@@ -21,6 +21,11 @@ import {
 import { getRaceLapCount } from '../data/raceLapCounts';
 import { getSessionPollingInterval } from '../services/openf1/pollingPolicy';
 import { deterministicRange } from '../utils/deterministic';
+import { fulfilledArray, hasRejected } from '../services/openf1/settled';
+import {
+  plausiblePitDuration,
+  shouldEmitPitNotifications,
+} from '../domain/pitNotifications';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -151,6 +156,7 @@ export function useF1Data(): F1DataState {
   const raceDataCacheRef = useRef<Map<number, { standings: DriverStanding[], maxLap: number, totalLaps: number }>>(new Map());
 
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
+  const prevPitSessionKeyRef = useRef<number | null>(null);
   const standingsRef = useRef<DriverStanding[]>([]);
   standingsRef.current = standings;
   const sessionRef = useRef<Session | null>(null);
@@ -263,12 +269,13 @@ export function useF1Data(): F1DataState {
         getOpenF1Data<Location[]>(`/location?session_key=${sk}`),
       ]);
 
-      const driversData: Driver[] = drivers.status === 'fulfilled' ? drivers.value : DEMO_DRIVERS;
-      const positionsData: Position[] = rawPositions.status === 'fulfilled' ? rawPositions.value : [];
-      const lapsData: Lap[] = laps.status === 'fulfilled' ? laps.value : [];
-      const stintsData: Stint[] = stints.status === 'fulfilled' ? stints.value : [];
-      const pitsData: PitStop[] = pits.status === 'fulfilled' ? pits.value : [];
-      const locationsData: Location[] = locations.status === 'fulfilled' ? locations.value : [];
+      const driversData: Driver[] = fulfilledArray(drivers);
+      const positionsData: Position[] = fulfilledArray(rawPositions);
+      const lapsData: Lap[] = fulfilledArray(laps);
+      const stintsData: Stint[] = fulfilledArray(stints);
+      const pitsData: PitStop[] = fulfilledArray(pits);
+      const locationsData: Location[] = fulfilledArray(locations);
+      const isPartialResponse = hasRejected([drivers, rawPositions, laps, stints, pits, locations]);
 
       if (driversData.length === 0) {
         demoModeRef.current = true;
@@ -345,24 +352,26 @@ export function useF1Data(): F1DataState {
 
       // Detect new pit stops
       const newPitNotifications: PitNotification[] = [];
-      for (const pit of pitsData) {
-        const prevCount = prevPitDataRef.current.get(pit.driver_number) ?? 0;
-        const curCount = pitCount.get(pit.driver_number) ?? 0;
-        if (curCount > prevCount) {
-          const driver = driversData.find(d => d.driver_number === pit.driver_number);
-          const pos = latestPos.get(pit.driver_number)?.position ?? 0;
-          const stint = currentStints.get(pit.driver_number);
-          if (driver) {
-            newPitNotifications.push({
-              id: `${pit.driver_number}-${pit.lap_number}-${Date.now()}`,
-              driverNumber: pit.driver_number,
-              driverName: driver.name_acronym,
-              position: pos,
-              lapNumber: pit.lap_number,
-              timestamp: Date.now(),
-              compound: stint?.compound,
-              duration: pit.pit_duration ?? undefined,
-            });
+      if (shouldEmitPitNotifications(isLiveSession, prevPitSessionKeyRef.current, sk)) {
+        for (const pit of pitsData) {
+          const prevCount = prevPitDataRef.current.get(pit.driver_number) ?? 0;
+          const curCount = pitCount.get(pit.driver_number) ?? 0;
+          if (curCount > prevCount) {
+            const driver = driversData.find(d => d.driver_number === pit.driver_number);
+            const pos = latestPos.get(pit.driver_number)?.position ?? 0;
+            const stint = currentStints.get(pit.driver_number);
+            if (driver) {
+              newPitNotifications.push({
+                id: `${pit.driver_number}-${pit.lap_number}-${Date.now()}`,
+                driverNumber: pit.driver_number,
+                driverName: driver.name_acronym,
+                position: pos,
+                lapNumber: pit.lap_number,
+                timestamp: Date.now(),
+                compound: stint?.compound,
+                duration: plausiblePitDuration(pit.pit_duration),
+              });
+            }
           }
         }
       }
@@ -370,6 +379,7 @@ export function useF1Data(): F1DataState {
       const newPitRef = new Map<number, number>();
       for (const [k, v] of pitCount) newPitRef.set(k, v);
       prevPitDataRef.current = newPitRef;
+      prevPitSessionKeyRef.current = sk;
 
       if (newPitNotifications.length > 0) {
         setPitNotifications(prev => [...prev.slice(-5), ...newPitNotifications]);
@@ -418,8 +428,10 @@ export function useF1Data(): F1DataState {
       setIsLive(isLiveSession);
       setError(null);
       setDataQuality(createDataQuality('openf1', {
-        availability: finalStandings.length > 0 ? 'ready' : 'empty',
-        message: isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
+        availability: finalStandings.length === 0 ? 'empty' : isPartialResponse ? 'partial' : 'ready',
+        message: isPartialResponse
+          ? 'Some OpenF1 endpoints are unavailable'
+          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
       }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';

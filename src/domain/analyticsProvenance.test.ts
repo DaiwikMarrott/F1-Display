@@ -22,5 +22,7 @@ describe('analytics provenance', () => {
       .toBe('OPENF1 DATA');
     expect(getAnalyticsProvenance('timing', createDataQuality('cache', { freshness: 'fresh' })).label)
       .toBe('CACHED OPENF1 DATA');
+    expect(getAnalyticsProvenance('timing', createDataQuality('openf1', { availability: 'partial' })).label)
+      .toBe('PARTIAL OPENF1 DATA');
   });
 });

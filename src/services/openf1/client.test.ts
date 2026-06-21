@@ -105,4 +105,20 @@ describe('OpenF1Client', () => {
     expect(result.quality.availability).toBe('error');
     expect(result.error?.message).toContain('HTTP 500');
   });
+
+  it('calls the browser fetch function through globalThis', async () => {
+    const originalFetch = globalThis.fetch;
+    const browserFetch = vi.fn().mockResolvedValue(response([{ id: 1 }]));
+    globalThis.fetch = browserFetch;
+
+    try {
+      const defaultClient = new OpenF1Client();
+      const result = await defaultClient.request('/sessions');
+
+      expect(result.data).toEqual([{ id: 1 }]);
+      expect(browserFetch).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

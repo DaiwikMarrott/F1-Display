@@ -25,7 +25,11 @@ export function getAnalyticsProvenance(
     case 'timing':
       return {
         provenance: source.provenance,
-        label: source.provenance === 'cache' ? 'CACHED OPENF1 DATA' : 'OPENF1 DATA',
+        label: source.availability === 'partial'
+          ? 'PARTIAL OPENF1 DATA'
+          : source.provenance === 'cache'
+            ? 'CACHED OPENF1 DATA'
+            : 'OPENF1 DATA',
       };
     case 'tires':
     case 'gaps':

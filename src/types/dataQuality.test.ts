@@ -27,4 +27,9 @@ describe('data quality contracts', () => {
     expect(getDataQualityLabel(quality)).toBe('DATA ERROR');
     vi.restoreAllMocks();
   });
+
+  it('labels partial responses explicitly', () => {
+    expect(getDataQualityLabel(createDataQuality('openf1', { availability: 'partial' })))
+      .toBe('PARTIAL DATA');
+  });
 });

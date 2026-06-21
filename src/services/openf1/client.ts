@@ -59,7 +59,7 @@ export class OpenF1Client {
 
   constructor(options: OpenF1ClientOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_BASE_URL;
-    this.fetchFn = options.fetchFn ?? fetch;
+    this.fetchFn = options.fetchFn ?? ((input, init) => globalThis.fetch(input, init));
     this.now = options.now ?? Date.now;
     this.sleep = options.sleep ?? defaultSleep;
     this.baseBackoffMs = options.baseBackoffMs ?? 500;
