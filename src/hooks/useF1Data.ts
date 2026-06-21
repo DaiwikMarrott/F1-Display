@@ -13,10 +13,13 @@ import type {
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
 import { getOpenF1Data } from '../services/openf1/client';
-import { isRaceSession, selectCurrentOrLatestRace } from '../domain/sessionSelection';
+import {
+  getSessionPhase,
+  isRaceSession,
+  selectCurrentOrLatestRace,
+} from '../domain/sessionSelection';
 import { getRaceLapCount } from '../data/raceLapCounts';
-
-const POLL_INTERVAL = 2000;
+import { getSessionPollingInterval } from '../services/openf1/pollingPolicy';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -216,9 +219,23 @@ export function useF1Data(): F1DataState {
       setSession(targetSession);
       const sk = targetSession.session_key;
       const isRace = isRaceSession(targetSession);
-      const isLiveSession = targetSession.status === 'started' || targetSession.status === 'active';
+      const sessionPhase = getSessionPhase(targetSession);
+      const isLiveSession = sessionPhase === 'live';
       const raceLapCount = getRaceLapCount(targetSession);
       setTotalLaps(raceLapCount ?? 0);
+
+      if (sessionPhase === 'upcoming') {
+        setStandings([]);
+        setCurrentLap(0);
+        setIsLive(false);
+        setError(null);
+        setDataQuality(createDataQuality('unavailable', {
+          availability: 'empty',
+          freshness: 'fresh',
+          message: 'Upcoming session; race data is not available yet',
+        }));
+        return;
+      }
 
       // 3. Stale-while-revalidate: check cache for complete races
       if (!isLiveSession && raceDataCacheRef.current.has(sk)) {
@@ -441,11 +458,36 @@ export function useF1Data(): F1DataState {
     fetchData();
   }, [selectedRaceKey, fetchData]);
 
-  // Poll for updates
+  // Poll only when the selected session policy requires it.
   useEffect(() => {
-    const interval = setInterval(fetchData, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+    const pollingInterval = getSessionPollingInterval(session);
+    if (pollingInterval === null) return undefined;
+
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (document.hidden || interval !== null) return;
+      interval = setInterval(fetchData, pollingInterval);
+    };
+    const stop = () => {
+      if (interval !== null) clearInterval(interval);
+      interval = null;
+    };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        void fetchData();
+        start();
+      }
+    };
+
+    start();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchData, session]);
 
   return {
     standings,
