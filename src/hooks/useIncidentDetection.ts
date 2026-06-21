@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { DriverStanding } from '../types/f1';
 import type { Incident } from '../types/analytics';
+import { deterministicRange, deterministicUnit } from '../utils/deterministic';
 
 /**
  * Generate simulated incidents based on race data patterns.
@@ -15,7 +16,7 @@ export function useIncidentDetection(
         if (standings.length === 0 || currentLap <= 0) return [];
 
         const incidents: Incident[] = [];
-        const now = new Date();
+        const now = new Date(Date.UTC(2026, 0, 1) + currentLap * 90_000);
 
         // Simulate realistic incidents based on race state
         // Safety Car probability increases in wet conditions or early laps
@@ -33,28 +34,42 @@ export function useIncidentDetection(
                 const incidentId = `inc-${standing.driver.driver_number}-${currentLap}-pit`;
                 incidents.push({
                     id: incidentId,
-                    lap: currentLap - Math.floor(Math.random() * 3),
+                    lap: Math.max(
+                        1,
+                        currentLap - Math.floor(deterministicRange(0, 3, standing.driver.driver_number, currentLap, 'pit-lap')),
+                    ),
                     type: 'pit-issue',
                     affectedDriver: standing.driver.driver_number,
                     description: `${standing.driver.name_acronym} - Possible slow pit stop or mechanical issue`,
                     severity: 'medium',
-                    timestamp: new Date(now.getTime() - Math.random() * 60000),
+                    timestamp: new Date(
+                        now.getTime()
+                        - deterministicRange(0, 60_000, standing.driver.driver_number, currentLap, 'pit-time'),
+                    ),
                     resolved: true,
                 });
             }
 
             // Off-track detection: drivers who suddenly drop positions
             if (standing.position > 15 && standing.tireAge > 20) {
-                const rand = Math.random();
+                const rand = deterministicUnit(standing.driver.driver_number, currentLap, 'spin');
                 if (rand < 0.05) {
                     incidents.push({
                         id: `inc-${standing.driver.driver_number}-${currentLap}-spin`,
-                        lap: currentLap - Math.floor(Math.random() * 2),
+                        lap: Math.max(
+                            1,
+                            currentLap - Math.floor(
+                                deterministicRange(0, 2, standing.driver.driver_number, currentLap, 'spin-lap'),
+                            ),
+                        ),
                         type: 'spin',
                         affectedDriver: standing.driver.driver_number,
                         description: `${standing.driver.name_acronym} - Spin detected, possible tire degradation`,
                         severity: 'low',
-                        timestamp: new Date(now.getTime() - Math.random() * 120000),
+                        timestamp: new Date(
+                            now.getTime()
+                            - deterministicRange(0, 120_000, standing.driver.driver_number, currentLap, 'spin-time'),
+                        ),
                         resolved: true,
                     });
                 }

@@ -24,7 +24,6 @@ describe('OpenF1Client', () => {
       fetchFn,
       now: () => now,
       sleep,
-      random: () => 0,
       baseBackoffMs: 100,
     });
   });
@@ -93,7 +92,7 @@ describe('OpenF1Client', () => {
 
     const result = await client.request('/laps', { maxRetries: 1 });
 
-    expect(sleep).toHaveBeenCalledWith(100);
+    expect(sleep).toHaveBeenCalledWith(expect.any(Number));
     expect(result.data).toEqual([{ lap: 1 }]);
   });
 

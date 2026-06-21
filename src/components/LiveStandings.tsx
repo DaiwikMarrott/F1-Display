@@ -78,7 +78,7 @@ const LiveStandings: React.FC<Props> = ({ standings, currentLap, totalLaps }) =>
   return (
     <div className="live-standings">
       <div className="live-standings__header">
-        <div className="live-standings__title">LIVE STANDINGS</div>
+        <div className="live-standings__title">RACE STANDINGS</div>
         <div className="live-standings__race-info">
           <div className="race-info__lap">
             <span className="lap-label">LAP</span>

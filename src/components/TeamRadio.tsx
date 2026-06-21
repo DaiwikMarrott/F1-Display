@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Incident } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { deterministicUnit } from '../utils/deterministic';
 import './TeamRadio.css';
 
 interface RadioMessage {
@@ -41,7 +42,10 @@ export default function TeamRadio({ standings, currentLap, incidents }: Props) {
                         ? 'Box, box. The undercut window is open. Stay in front of the pack.'
                         : 'Box, box. We are changing to Hard compound this lap.',
                     type: 'strategy',
-                    lap: currentLap - Math.floor(Math.random() * 2),
+                    lap: Math.max(
+                        1,
+                        currentLap - Math.floor(deterministicUnit(d.driver.driver_number, currentLap, 'radio-lap') * 2),
+                    ),
                 });
             }
         });

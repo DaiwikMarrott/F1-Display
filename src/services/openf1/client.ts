@@ -2,6 +2,7 @@ import { createDataQuality } from '../../types/dataQuality';
 import type { DataQuality } from '../../types/dataQuality';
 import { getCachePolicy } from './policies';
 import type { CachePolicy } from './policies';
+import { deterministicUnit } from '../../utils/deterministic';
 
 const DEFAULT_BASE_URL = 'https://api.openf1.org/v1';
 
@@ -29,7 +30,6 @@ export interface OpenF1ClientOptions {
   fetchFn?: typeof fetch;
   now?: () => number;
   sleep?: (milliseconds: number) => Promise<void>;
-  random?: () => number;
   baseBackoffMs?: number;
 }
 
@@ -52,7 +52,6 @@ export class OpenF1Client {
   private readonly fetchFn: typeof fetch;
   private readonly now: () => number;
   private readonly sleep: (milliseconds: number) => Promise<void>;
-  private readonly random: () => number;
   private readonly baseBackoffMs: number;
   private readonly cache = new Map<string, CacheEntry<unknown>>();
   private readonly inFlight = new Map<string, Promise<OpenF1Result<unknown>>>();
@@ -63,7 +62,6 @@ export class OpenF1Client {
     this.fetchFn = options.fetchFn ?? fetch;
     this.now = options.now ?? Date.now;
     this.sleep = options.sleep ?? defaultSleep;
-    this.random = options.random ?? Math.random;
     this.baseBackoffMs = options.baseBackoffMs ?? 500;
   }
 
@@ -161,7 +159,7 @@ export class OpenF1Client {
         if (response.status === 429) {
           const retryAfter = parseRetryAfter(response.headers.get('Retry-After'), this.now());
           const exponential = this.baseBackoffMs * 2 ** attempt;
-          const jitter = Math.floor(this.random() * Math.max(1, exponential * 0.2));
+          const jitter = Math.floor(deterministicUnit(url, attempt) * Math.max(1, exponential * 0.2));
           const delay = Math.max(retryAfter ?? 0, exponential + jitter);
           this.cooldownUntil = Math.max(this.cooldownUntil, this.now() + delay);
           lastError = new Error(`OpenF1 rate limited request: ${url}`);

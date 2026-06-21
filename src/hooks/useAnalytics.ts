@@ -10,6 +10,7 @@ import type {
   AnalyticsState
 } from '../types/analytics';
 import { clampPercent, positiveOrNull, safeTireAge } from '../utils/formatters';
+import { deterministicRange, deterministicUnit } from '../utils/deterministic';
 
 // Tire compound specifications
 const TIRE_SPECS: Record<string, { maxLaps: number; color: string; grip: number }> = {
@@ -52,7 +53,7 @@ function calculateTireAnalysis(
     degradationRate,
     performanceLoss,
     optimalPitLap: Math.min(optimalPitLap, totalLaps),
-    pitLossPredicted: 20 + Math.random() * 3, // 20-23 seconds typical
+    pitLossPredicted: deterministicRange(20, 23, standing.driver.driver_number, currentLap, 'pit-loss'),
     lapsSinceStart: age,
     conditionPercent,
   };
@@ -73,10 +74,10 @@ function calculateSectorData(
   const sector3 = totalTime * 0.27;
   
   // Add realistic variation per sector
-  const variation = [0.98, 0.99, 1.01][Math.floor(Math.random() * 3)];
-  const s1 = sector1 * variation * (1 + (Math.random() - 0.5) * 0.04);
-  const s2 = sector2 * variation * (1 + (Math.random() - 0.5) * 0.04);
-  const s3 = sector3 * variation * (1 + (Math.random() - 0.5) * 0.04);
+  const seed = [standing.driver.driver_number, totalTime];
+  const s1 = sector1 * deterministicRange(0.98, 1.02, ...seed, 's1');
+  const s2 = sector2 * deterministicRange(0.98, 1.02, ...seed, 's2');
+  const s3 = sector3 * deterministicRange(0.98, 1.02, ...seed, 's3');
   
   // Best sectors are usually 5-8 tenths better
   const bestS1 = s1 * 0.94;
@@ -133,7 +134,8 @@ function calculateGapTrend(
   // Lower positions close gap faster; newer tires close gap faster
   const positionFactor = 1 - (standing.position / 20);
   const tireFactor = standing.tireAge > 15 ? -0.02 : 0.01; // old tires lose gap
-  const gapTrendValue = (-0.1 * positionFactor + tireFactor) * Math.random();
+  const gapTrendValue = (-0.1 * positionFactor + tireFactor)
+    * deterministicUnit(standing.driver.driver_number, standing.position, standing.tireAge, 'gap');
   
   // DRS detection: within 1.0 second
   const drsWindow = gapSeconds > 0 && gapSeconds <= 1.0;
@@ -202,16 +204,23 @@ function calculateStrategyRecommendation(
   const gainSeconds = Math.max(0, tireAnalysis.performanceLoss * 0.5);
   
   // Predict finish position
-  const predictedFinish = Math.max(1, standing.position + Math.round((Math.random() - 0.5) * 3));
+  const predictedFinish = Math.max(
+    1,
+    standing.position + Math.round(deterministicRange(-1.5, 1.5, standing.driver.driver_number, currentLap, 'finish')),
+  );
 
   const pitNowScenario = {
     label: 'Pit now',
     action: 'pit-now' as const,
     compound: tireAnalysis.age > 15 ? 'HARD' as const : 'MEDIUM' as const,
     pitLap: currentLap,
-    projectedFinishPosition: Math.max(1, standing.position + (standing.position <= 3 ? 0 : 1) - Math.round(Math.random() * 1)),
+    projectedFinishPosition: Math.max(
+      1,
+      standing.position + (standing.position <= 3 ? 0 : 1)
+        - Math.round(deterministicUnit(standing.driver.driver_number, currentLap, 'pit-now-position')),
+    ),
     projectedTimeGain: Number((tireAnalysis.performanceLoss * 0.45 + fuelSavingPotential * 0.2).toFixed(1)),
-    confidence: Math.round(74 + Math.random() * 16),
+    confidence: Math.round(deterministicRange(74, 90, standing.driver.driver_number, currentLap, 'pit-now-confidence')),
   };
 
   const currentDryCompound = tireAnalysis.compound === 'INTERMEDIATE' || tireAnalysis.compound === 'WET'
@@ -223,9 +232,15 @@ function calculateStrategyRecommendation(
     action: 'stay-out' as const,
     compound: currentDryCompound,
     pitLap: Math.min(totalLaps, currentLap + Math.max(1, Math.ceil(tireLapsRemaining / 2))),
-    projectedFinishPosition: Math.max(1, standing.position + Math.round((standing.tireAge > 18 ? 2 : 1) + Math.random() * 2)),
+    projectedFinishPosition: Math.max(
+      1,
+      standing.position + Math.round(
+        (standing.tireAge > 18 ? 2 : 1)
+        + deterministicRange(0, 2, standing.driver.driver_number, currentLap, 'stay-position'),
+      ),
+    ),
     projectedTimeGain: Number(Math.max(0, tireAnalysis.performanceLoss * 0.15).toFixed(1)),
-    confidence: Math.round(68 + Math.random() * 18),
+    confidence: Math.round(deterministicRange(68, 86, standing.driver.driver_number, currentLap, 'stay-confidence')),
   };
 
   const pushScenario = {
@@ -233,9 +248,12 @@ function calculateStrategyRecommendation(
     action: 'push' as const,
     compound: currentDryCompound,
     pitLap: Math.min(totalLaps, currentLap + 1),
-    projectedFinishPosition: Math.max(1, standing.position - Math.round(Math.random() * 2)),
+    projectedFinishPosition: Math.max(
+      1,
+      standing.position - Math.round(deterministicRange(0, 2, standing.driver.driver_number, currentLap, 'push-position')),
+    ),
     projectedTimeGain: Number((Math.max(0, tireAnalysis.performanceLoss * 0.25) + fuelSavingPotential * 0.1).toFixed(1)),
-    confidence: Math.round(60 + Math.random() * 20),
+    confidence: Math.round(deterministicRange(60, 80, standing.driver.driver_number, currentLap, 'push-confidence')),
   };
   
   // Risk assessment
@@ -258,7 +276,7 @@ function calculateStrategyRecommendation(
     whatIfScenarios: [pitNowScenario, stayOutScenario, pushScenario],
     predictedFinishPosition: predictedFinish,
     riskLevel,
-    confidence: 70 + Math.random() * 25,
+    confidence: deterministicRange(70, 95, standing.driver.driver_number, currentLap, 'strategy-confidence'),
   };
 }
 
@@ -273,7 +291,8 @@ function calculateDriverForm(
   const baseLap = positiveOrNull(standing.bestLap) ?? positiveOrNull(standing.lastLap);
   if (baseLap === null) return null;
   for (let i = -4; i <= 0; i++) {
-    const degradation = Math.abs(i) * 0.15 * Math.random(); // each lap degrades slightly
+    const degradation = Math.abs(i) * 0.15
+      * deterministicUnit(standing.driver.driver_number, standing.tireAge, i, 'form');
     last5Laps.push(baseLap + degradation);
   }
   
@@ -317,7 +336,7 @@ function calculateTelemetryData(
 ): TelemetryData {
   // Simulate realistic telemetry
   const baseSpeed = 300 + standing.position * 2; // faster drivers slightly faster
-  const topSpeed = baseSpeed + (Math.random() - 0.5) * 20;
+  const topSpeed = baseSpeed + deterministicRange(-10, 10, standing.driver.driver_number, 'top-speed');
   const avgSpeed = topSpeed * 0.92;
   
   return {
@@ -325,66 +344,75 @@ function calculateTelemetryData(
     topSpeed: Math.round(topSpeed),
     avgSpeed: Math.round(avgSpeed),
     brakingZones: [], // Would need detailed track data
-    acceleration: 75 + Math.random() * 25,
+    acceleration: deterministicRange(75, 100, standing.driver.driver_number, 'acceleration'),
     cornerSpeed: avgSpeed * 0.75,
-    gForce: 3.5 + Math.random() * 1.5,
-    maxGForce: 4.5 + Math.random() * 1.5,
+    gForce: deterministicRange(3.5, 5, standing.driver.driver_number, 'g-force'),
+    maxGForce: deterministicRange(4.5, 6, standing.driver.driver_number, 'max-g-force'),
   };
 }
 
 /**
  * Main analytics hook - calculates all analytics data
  */
+export function calculateAnalytics(
+  standings: DriverStanding[],
+  currentLap: number,
+  totalLaps: number
+): AnalyticsState {
+  const tireAnalysis = new Map<number, TireAnalysis>();
+  const sectors = new Map<number, SectorData>();
+  const gapTrends = new Map<number, GapTrend>();
+  const strategies = new Map<number, StrategyRecommendation>();
+  const formData = new Map<number, DriverForm>();
+  const telemetry = new Map<number, TelemetryData>();
+    
+  const leaderLapTime = positiveOrNull(standings[0]?.bestLap) ?? 0;
+    
+  standings.forEach(standing => {
+    const driverNum = standing.driver.driver_number;
+
+    const tire = calculateTireAnalysis(standing, currentLap, totalLaps);
+    if (tire) {
+      tireAnalysis.set(driverNum, tire);
+    }
+
+    const sector = calculateSectorData(standing, leaderLapTime);
+    if (sector) sectors.set(driverNum, sector);
+
+    const gap = calculateGapTrend(standing);
+    if (gap) gapTrends.set(driverNum, gap);
+
+    if (tire && currentLap > 0 && totalLaps > currentLap) {
+      strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
+    }
+
+    const form = calculateDriverForm(standing);
+    if (form) formData.set(driverNum, form);
+
+    telemetry.set(driverNum, calculateTelemetryData(standing));
+  });
+    
+  return {
+    tireAnalysis,
+    sectors,
+    gapTrends,
+    strategies,
+    formData,
+    telemetry,
+    incidents: [],
+    lastUpdateLap: currentLap,
+  };
+}
+
 export function useAnalytics(
   standings: DriverStanding[],
   currentLap: number,
   totalLaps: number
 ): AnalyticsState {
-  return useMemo(() => {
-    const tireAnalysis = new Map<number, TireAnalysis>();
-    const sectors = new Map<number, SectorData>();
-    const gapTrends = new Map<number, GapTrend>();
-    const strategies = new Map<number, StrategyRecommendation>();
-    const formData = new Map<number, DriverForm>();
-    const telemetry = new Map<number, TelemetryData>();
-    
-    const leaderLapTime = positiveOrNull(standings[0]?.bestLap) ?? 0;
-    
-    standings.forEach(standing => {
-      const driverNum = standing.driver.driver_number;
-      
-      const tire = calculateTireAnalysis(standing, currentLap, totalLaps);
-      if (tire) {
-        tireAnalysis.set(driverNum, tire);
-      }
-      
-      const sector = calculateSectorData(standing, leaderLapTime);
-      if (sector) sectors.set(driverNum, sector);
-      
-      const gap = calculateGapTrend(standing);
-      if (gap) gapTrends.set(driverNum, gap);
-      
-      if (tire && currentLap > 0 && totalLaps > currentLap) {
-        strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
-      }
-      
-      const form = calculateDriverForm(standing);
-      if (form) formData.set(driverNum, form);
-      
-      telemetry.set(driverNum, calculateTelemetryData(standing));
-    });
-    
-    return {
-      tireAnalysis,
-      sectors,
-      gapTrends,
-      strategies,
-      formData,
-      telemetry,
-      incidents: [],
-      lastUpdateLap: currentLap,
-    };
-  }, [standings, currentLap, totalLaps]);
+  return useMemo(
+    () => calculateAnalytics(standings, currentLap, totalLaps),
+    [standings, currentLap, totalLaps],
+  );
 }
 
 export default useAnalytics;

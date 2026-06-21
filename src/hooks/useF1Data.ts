@@ -20,6 +20,7 @@ import {
 } from '../domain/sessionSelection';
 import { getRaceLapCount } from '../data/raceLapCounts';
 import { getSessionPollingInterval } from '../services/openf1/pollingPolicy';
+import { deterministicRange } from '../utils/deterministic';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -70,7 +71,7 @@ const DEMO_DRIVERS: Driver[] = [
   { driver_number: 87, broadcast_name: 'O BEARMAN', full_name: 'Oliver Bearman', name_acronym: 'BEA', team_name: 'Haas F1 Team', team_colour: 'B6BABD', session_key: 0 },
 ];
 
-function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
+export function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
   const compounds: Stint['compound'][] = ['SOFT', 'MEDIUM', 'HARD', 'SOFT', 'MEDIUM'];
   const raw = DEMO_DRIVERS.map((driver, idx) => {
     // Simulate realistic gaps that grow as laps progress
@@ -78,7 +79,8 @@ function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
     const baseGap = idx === 0 ? 0 : idx * 1.1;
     // Gap grows slightly as race progresses (some drivers drop back)
     const lapFactor = (currentLap - 14) * 0.1;
-    const gapSec = baseGap + lapFactor + Math.random() * 1.5;
+    const gapSec = baseGap + lapFactor
+      + deterministicRange(0, 1.5, driver.driver_number, currentLap, 'demo-gap');
 
     // Simulate lap times that vary slightly
     const baseLapTime = 90 + idx * 0.3;
@@ -93,7 +95,8 @@ function buildDemoStandings(currentLap: number = 14): DriverStanding[] {
       position,
       gapToLeader: formatGap(gapSec),
       lastLap,
-      bestLap: baseLapTime - 0.8 + Math.random() * 0.2,
+      bestLap: baseLapTime - 0.8
+        + deterministicRange(0, 0.2, driver.driver_number, currentLap, 'demo-best-lap'),
       isFastestLap: idx === 3 && currentLap > 20,
       currentStint: {
         driver_number: driver.driver_number,

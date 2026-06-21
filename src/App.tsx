@@ -22,6 +22,7 @@ import {
   getSessionDisplayLabel,
   getSessionOptions,
 } from './domain/sessionSelection';
+import { getAnalyticsProvenance } from './domain/analyticsProvenance';
 import './App.css';
 
 type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
@@ -57,6 +58,7 @@ const App: React.FC = () => {
   const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
 
   const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
+  const analyticsProvenance = getAnalyticsProvenance(analyticsPanelTab, dataQuality);
 
   const handleRaceSelect = (sessionKey: number | null) => {
     setSelectedRaceKey(sessionKey);
@@ -241,6 +243,12 @@ const App: React.FC = () => {
                     {tab.label}
                   </button>
                 ))}
+              </div>
+
+              <div
+                className={`app-analytics-source app-analytics-source--${analyticsProvenance.provenance}`}
+              >
+                {analyticsProvenance.label}
               </div>
 
               {/* Content based on selected tab */}
