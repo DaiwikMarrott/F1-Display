@@ -12,15 +12,9 @@ import type {
 } from '../types/f1';
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
+import { getOpenF1Data } from '../services/openf1/client';
 
-const BASE_URL = 'https://api.openf1.org/v1';
 const POLL_INTERVAL = 2000;
-
-async function fetchJSON<T>(url: string): Promise<T> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`HTTP ${response.status}: ${url}`);
-  return response.json() as Promise<T>;
-}
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -174,7 +168,7 @@ export function useF1Data(): F1DataState {
       } else {
         try {
           const currentYear = new Date().getFullYear();
-          sessionsResp = await fetchJSON<Session[]>(`${BASE_URL}/sessions?year=${currentYear}`);
+          sessionsResp = await getOpenF1Data<Session[]>(`/sessions?year=${currentYear}`);
           if (sessionsResp.length > 0) {
             sessionListCacheRef.current = sessionsResp;
           }
@@ -202,7 +196,7 @@ export function useF1Data(): F1DataState {
       } else {
         // Load the latest session or next upcoming race
         try {
-          const latestSessions = await fetchJSON<Session[]>(`${BASE_URL}/sessions?session_key=latest`);
+          const latestSessions = await getOpenF1Data<Session[]>('/sessions?session_key=latest');
           targetSession = latestSessions[0] || null;
         } catch (e) {
           console.warn('Failed to fetch latest session:', e);
@@ -250,12 +244,12 @@ export function useF1Data(): F1DataState {
 
       // 4. Fetch all race data in parallel
       const [drivers, rawPositions, laps, stints, pits, locations] = await Promise.allSettled([
-        fetchJSON<Driver[]>(`${BASE_URL}/drivers?session_key=${sk}`),
-        fetchJSON<Position[]>(`${BASE_URL}/position?session_key=${sk}`),
-        fetchJSON<Lap[]>(`${BASE_URL}/laps?session_key=${sk}`),
-        fetchJSON<Stint[]>(`${BASE_URL}/stints?session_key=${sk}`),
-        fetchJSON<PitStop[]>(`${BASE_URL}/pit?session_key=${sk}`),
-        fetchJSON<Location[]>(`${BASE_URL}/location?session_key=${sk}`),
+        getOpenF1Data<Driver[]>(`/drivers?session_key=${sk}`),
+        getOpenF1Data<Position[]>(`/position?session_key=${sk}`),
+        getOpenF1Data<Lap[]>(`/laps?session_key=${sk}`),
+        getOpenF1Data<Stint[]>(`/stints?session_key=${sk}`),
+        getOpenF1Data<PitStop[]>(`/pit?session_key=${sk}`),
+        getOpenF1Data<Location[]>(`/location?session_key=${sk}`),
       ]);
 
       const driversData: Driver[] = drivers.status === 'fulfilled' ? drivers.value : DEMO_DRIVERS;
