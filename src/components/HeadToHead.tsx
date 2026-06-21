@@ -204,11 +204,15 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
                 {/* Tires */}
                 <div className="h2h-row">
                     <div className="h2h-cell h2h-cell--1">
-                        <span className={`h2h-compound h2h-compound--${d1.tire?.compound.toLowerCase()}`}>{d1.tire?.compound[0]}</span> ({d1.tire?.age} L)
+                        {d1.tire ? (
+                            <><span className={`h2h-compound h2h-compound--${d1.tire.compound.toLowerCase()}`}>{d1.tire.compound[0]}</span> ({d1.tire.age} L)</>
+                        ) : 'Unavailable'}
                     </div>
                     <div className="h2h-label">TIRES</div>
                     <div className="h2h-cell h2h-cell--2">
-                        <span className={`h2h-compound h2h-compound--${d2.tire?.compound.toLowerCase()}`}>{d2.tire?.compound[0]}</span> ({d2.tire?.age} L)
+                        {d2.tire ? (
+                            <><span className={`h2h-compound h2h-compound--${d2.tire.compound.toLowerCase()}`}>{d2.tire.compound[0]}</span> ({d2.tire.age} L)</>
+                        ) : 'Unavailable'}
                     </div>
                 </div>
 

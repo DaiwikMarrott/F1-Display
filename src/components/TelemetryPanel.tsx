@@ -1,5 +1,6 @@
 import type { TelemetryData } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './TelemetryPanel.css';
 
 interface Props {
@@ -15,7 +16,7 @@ export default function TelemetryPanel({ telemetry, standings, currentLap, total
       <div className="telemetry-panel">
         <div className="telemetry-panel__header">
           <h2 className="telemetry-panel__title">TELEMETRY</h2>
-          <span className="telemetry-panel__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="telemetry-panel__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="telemetry-panel__empty">No telemetry data available</div>
       </div>
@@ -35,7 +36,7 @@ export default function TelemetryPanel({ telemetry, standings, currentLap, total
     <div className="telemetry-panel">
       <div className="telemetry-panel__header">
         <h2 className="telemetry-panel__title">TELEMETRY</h2>
-        <span className="telemetry-panel__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="telemetry-panel__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="telemetry-panel__container">

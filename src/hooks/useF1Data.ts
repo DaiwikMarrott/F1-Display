@@ -340,17 +340,6 @@ export function useF1Data(): F1DataState {
         return pa - pb;
       });
 
-      // Get leader lap time
-      const leaderLapTimes: number[] = [];
-      for (const l of lapsData) {
-        if (l.driver_number === sortedByPos[0]?.driver_number && l.lap_duration != null) {
-          leaderLapTimes.push(l.lap_duration);
-        }
-      }
-      const avgLeaderLap = leaderLapTimes.length > 0
-        ? leaderLapTimes.reduce((a, b) => a + b, 0) / leaderLapTimes.length
-        : 90;
-
       // Detect new pit stops
       const newPitNotifications: PitNotification[] = [];
       for (const pit of pitsData) {
@@ -390,18 +379,16 @@ export function useF1Data(): F1DataState {
         const best = bestLap.get(driver.driver_number) ?? null;
         const stint = currentStints.get(driver.driver_number) ?? null;
         const age = stint
-          ? maxLap - stint.lap_start + (stint.tyre_age_at_start ?? 0)
+          ? Math.max(0, maxLap - stint.lap_start + (stint.tyre_age_at_start ?? 0))
           : 0;
         const count = pitCount.get(driver.driver_number) ?? 0;
         const loc = latestLocation.get(driver.driver_number) ?? null;
         const last = lap?.lap_duration ?? null;
 
-        const gapSec = pos === 1 ? 0 : (pos - 1) * avgLeaderLap * 0.003 + Math.random() * 0.5;
-
         return {
           driver,
           position: pos,
-          gapToLeader: formatGap(pos === 1 ? 0 : gapSec),
+          gapToLeader: pos === 1 ? 'LEADER' : '—',
           lastLap: last,
           bestLap: best,
           isFastestLap: driver.driver_number === fastestDriver,

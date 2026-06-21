@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
 import './DriverTooltip.css';
+import { safeTireAge } from '../utils/formatters';
 
 interface Props {
   standing: DriverStanding;
@@ -84,7 +85,9 @@ const DriverTooltip: React.FC<Props> = ({ standing, x, y }) => {
         </div>
         <div className="driver-tooltip__row">
           <span className="dt-label">TYRE AGE</span>
-          <span className="dt-value">{tireAge} laps</span>
+          <span className="dt-value">
+            {safeTireAge(tireAge) === null ? 'Unavailable' : `${safeTireAge(tireAge)} laps`}
+          </span>
         </div>
         <div className="driver-tooltip__row">
           <span className="dt-label">EST. TEMP</span>

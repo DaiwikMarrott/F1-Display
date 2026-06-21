@@ -9,6 +9,7 @@ import type {
   TelemetryData,
   AnalyticsState
 } from '../types/analytics';
+import { clampPercent, positiveOrNull, safeTireAge } from '../utils/formatters';
 
 // Tire compound specifications
 const TIRE_SPECS: Record<string, { maxLaps: number; color: string; grip: number }> = {
@@ -28,13 +29,13 @@ function calculateTireAnalysis(
   if (!standing.currentStint) return null;
   
   const compound = standing.currentStint.compound;
-  const age = standing.tireAge || 0;
+  const age = safeTireAge(standing.tireAge) ?? 0;
   const specs = TIRE_SPECS[compound] || TIRE_SPECS['MEDIUM'];
   const maxAge = specs.maxLaps;
   
   // Degradation: polynomial curve, ~0.1-0.3s per lap
   const degradationRate = 0.05 + (age / maxAge) * 0.25;
-  const performanceLoss = Math.min(100, (age / maxAge) * 100);
+  const performanceLoss = clampPercent((age / maxAge) * 100) ?? 0;
   
   // Pit window: optimal when tire is at 60-75% life
   const optimalStart = Math.ceil(maxAge * 0.6);
@@ -63,9 +64,10 @@ function calculateTireAnalysis(
 function calculateSectorData(
   standing: DriverStanding,
   leaderLapTime: number
-): SectorData {
+): SectorData | null {
   // Sector distribution in typical lap: S1=33%, S2=40%, S3=27%
-  const totalTime = standing.lastLap ?? standing.bestLap ?? 0;
+  const totalTime = positiveOrNull(standing.lastLap) ?? positiveOrNull(standing.bestLap);
+  if (totalTime === null) return null;
   const sector1 = totalTime * 0.33;
   const sector2 = totalTime * 0.40;
   const sector3 = totalTime * 0.27;
@@ -120,9 +122,12 @@ function calculateSectorData(
  */
 function calculateGapTrend(
   standing: DriverStanding
-): GapTrend {
-  const gapSeconds = standing.gapToLeader === 'LEADER' ? 0 
-    : parseFloat(standing.gapToLeader.replace('+', '')) || 0;
+): GapTrend | null {
+  const parsedGap = standing.gapToLeader === 'LEADER'
+    ? 0
+    : Number.parseFloat(standing.gapToLeader.replace('+', ''));
+  if (!Number.isFinite(parsedGap) || parsedGap < 0) return null;
+  const gapSeconds = parsedGap;
   
   // Simulate gap closing rate based on position and tire performance
   // Lower positions close gap faster; newer tires close gap faster
@@ -174,7 +179,7 @@ function calculateStrategyRecommendation(
   totalLaps: number,
   tireAnalysis: TireAnalysis
 ): StrategyRecommendation {
-  const lapsRemaining = totalLaps - currentLap;
+  const lapsRemaining = Math.max(0, totalLaps - currentLap);
   const tireLapsRemaining = tireAnalysis.maxAge - tireAnalysis.age;
   const fuelBurnPerLap = Number((1.55 + (standing.position <= 5 ? 0.08 : 0.14) + (standing.tireAge > 15 ? 0.04 : 0)).toFixed(2));
   const estimatedFuelRemaining = Number(Math.max(0, lapsRemaining * fuelBurnPerLap).toFixed(1));
@@ -262,10 +267,11 @@ function calculateStrategyRecommendation(
  */
 function calculateDriverForm(
   standing: DriverStanding
-): DriverForm {
+): DriverForm | null {
   // Simulate last 5 lap times with degradation trend
   const last5Laps: number[] = [];
-  const baseLap = standing.bestLap ?? standing.lastLap ?? 0;
+  const baseLap = positiveOrNull(standing.bestLap) ?? positiveOrNull(standing.lastLap);
+  if (baseLap === null) return null;
   for (let i = -4; i <= 0; i++) {
     const degradation = Math.abs(i) * 0.15 * Math.random(); // each lap degrades slightly
     last5Laps.push(baseLap + degradation);
@@ -342,7 +348,7 @@ export function useAnalytics(
     const formData = new Map<number, DriverForm>();
     const telemetry = new Map<number, TelemetryData>();
     
-    const leaderLapTime = standings[0]?.bestLap || 90;
+    const leaderLapTime = positiveOrNull(standings[0]?.bestLap) ?? 0;
     
     standings.forEach(standing => {
       const driverNum = standing.driver.driver_number;
@@ -352,15 +358,18 @@ export function useAnalytics(
         tireAnalysis.set(driverNum, tire);
       }
       
-      sectors.set(driverNum, calculateSectorData(standing, leaderLapTime));
+      const sector = calculateSectorData(standing, leaderLapTime);
+      if (sector) sectors.set(driverNum, sector);
       
-      gapTrends.set(driverNum, calculateGapTrend(standing));
+      const gap = calculateGapTrend(standing);
+      if (gap) gapTrends.set(driverNum, gap);
       
-      if (tire) {
+      if (tire && currentLap > 0 && totalLaps > currentLap) {
         strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
       }
       
-      formData.set(driverNum, calculateDriverForm(standing));
+      const form = calculateDriverForm(standing);
+      if (form) formData.set(driverNum, form);
       
       telemetry.set(driverNum, calculateTelemetryData(standing));
     });

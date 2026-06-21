@@ -1,5 +1,6 @@
 import type { DriverForm } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { formatLapProgress, formatLapTime } from '../utils/formatters';
 import './FormMomentum.css';
 
 interface Props {
@@ -9,20 +10,13 @@ interface Props {
   totalLaps: number;
 }
 
-function formatLapTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  const millis = Math.floor((seconds - Math.floor(seconds)) * 1000);
-  return `${mins}:${secs.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
-}
-
 export default function FormMomentum({ formData, standings, currentLap, totalLaps }: Props) {
   if (!formData || formData.size === 0) {
     return (
       <div className="form-momentum">
         <div className="form-momentum__header">
           <h2 className="form-momentum__title">FORM AND MOMENTUM</h2>
-          <span className="form-momentum__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="form-momentum__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="form-momentum__empty">No form data available</div>
       </div>
@@ -40,7 +34,7 @@ export default function FormMomentum({ formData, standings, currentLap, totalLap
     <div className="form-momentum">
       <div className="form-momentum__header">
         <h2 className="form-momentum__title">FORM AND MOMENTUM</h2>
-        <span className="form-momentum__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="form-momentum__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="form-momentum__container">

@@ -1,5 +1,6 @@
 import { SectorData } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './SectorAnalysis.css';
 
 interface Props {
@@ -20,7 +21,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
       <div className="sector-analysis">
         <div className="sector-analysis__header">
           <h2 className="sector-analysis__title">SECTOR ANALYSIS</h2>
-          <span className="sector-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="sector-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="sector-analysis__empty">No data available</div>
       </div>
@@ -39,7 +40,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
   };
 
   const formatTime = (ms: number): string => {
-    if (!ms || ms === 0) return '--:-';
+    if (!Number.isFinite(ms) || ms <= 0) return 'Unavailable';
     const minutes = Math.floor(ms / 60000);
     const seconds = Math.floor((ms % 60000) / 1000);
     const hundredths = Math.floor((ms % 1000) / 10);
@@ -47,7 +48,8 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
   };
 
   const formatDelta = (ms: number): string => {
-    if (!ms || ms === 0) return '----';
+    if (!Number.isFinite(ms)) return 'Unavailable';
+    if (ms === 0) return '0';
     const sign = ms > 0 ? '+' : '';
     const centiseconds = (ms / 10).toFixed(0);
     return `${sign}${centiseconds}`;
@@ -65,7 +67,7 @@ export default function SectorAnalysis({ sectors, standings, currentLap, totalLa
     <div className="sector-analysis">
       <div className="sector-analysis__header">
         <h2 className="sector-analysis__title">SECTOR ANALYSIS</h2>
-        <span className="sector-analysis__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="sector-analysis__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       {/* Column Headers */}

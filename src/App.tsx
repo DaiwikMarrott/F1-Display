@@ -121,7 +121,7 @@ const App: React.FC = () => {
               {getDataQualityLabel(dataQuality)}
             </div>
           )}
-          {currentLap > 0 && (
+          {currentLap > 0 && totalLaps > 0 && (
             <span className="app-topbar__lap-counter">
               LAP {currentLap} / {totalLaps}
             </span>

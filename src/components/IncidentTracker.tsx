@@ -1,5 +1,6 @@
 import type { Incident } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { formatLapProgress } from '../utils/formatters';
 import './IncidentTracker.css';
 
 interface Props {
@@ -73,7 +74,7 @@ export default function IncidentTracker({ incidents, standings, currentLap, tota
         <div className="incident-tracker">
             <div className="incident-tracker__header">
                 <h2 className="incident-tracker__title">INCIDENTS</h2>
-                <span className="incident-tracker__lap">LAP {currentLap} / {totalLaps}</span>
+                <span className="incident-tracker__lap">{formatLapProgress(currentLap, totalLaps)}</span>
             </div>
 
             {/* Active incidents alert banner */}

@@ -1,5 +1,6 @@
 import type { StrategyRecommendation } from '../types/analytics';
 import type { DriverStanding } from '../types/f1';
+import { formatLapProgress, formatSignedSeconds } from '../utils/formatters';
 import './StrategyAdvisor.css';
 
 interface Props {
@@ -29,7 +30,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
       <div className="strategy-advisor">
         <div className="strategy-advisor__header">
           <h2 className="strategy-advisor__title">STRATEGY ADVISOR</h2>
-          <span className="strategy-advisor__lap">LAP {currentLap} / {totalLaps}</span>
+          <span className="strategy-advisor__lap">{formatLapProgress(currentLap, totalLaps)}</span>
         </div>
         <div className="strategy-advisor__empty">No strategy data available</div>
       </div>
@@ -47,7 +48,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
     <div className="strategy-advisor">
       <div className="strategy-advisor__header">
         <h2 className="strategy-advisor__title">STRATEGY ADVISOR</h2>
-        <span className="strategy-advisor__lap">LAP {currentLap} / {totalLaps}</span>
+        <span className="strategy-advisor__lap">{formatLapProgress(currentLap, totalLaps)}</span>
       </div>
 
       <div className="strategy-advisor__container">
@@ -77,7 +78,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Est. Gain</span>
-                  <span className="strategy-advisor__metric-value">+{strategy.optimalNextStop.gainSeconds.toFixed(1)}s</span>
+                  <span className="strategy-advisor__metric-value">{formatSignedSeconds(strategy.optimalNextStop.gainSeconds)}</span>
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Predicted Finish</span>
@@ -93,7 +94,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                 </div>
                 <div className="strategy-advisor__metric">
                   <span className="strategy-advisor__metric-label">Lift/Coast Gain</span>
-                  <span className="strategy-advisor__metric-value">+{strategy.fuelSavingPotential.toFixed(1)}s</span>
+                  <span className="strategy-advisor__metric-value">{formatSignedSeconds(strategy.fuelSavingPotential)}</span>
                 </div>
               </div>
 
@@ -121,7 +122,7 @@ export default function StrategyAdvisor({ strategies, standings, currentLap, tot
                       <div className="strategy-advisor__scenario-label">{scenario.label}</div>
                       <div className="strategy-advisor__scenario-line">Lap {scenario.pitLap} · {scenario.compound}</div>
                       <div className="strategy-advisor__scenario-line">Finish P{scenario.projectedFinishPosition}</div>
-                      <div className="strategy-advisor__scenario-line">Gain +{scenario.projectedTimeGain.toFixed(1)}s</div>
+                      <div className="strategy-advisor__scenario-line">Gain {formatSignedSeconds(scenario.projectedTimeGain)}</div>
                       <div className="strategy-advisor__scenario-line">Confidence {Math.round(scenario.confidence)}%</div>
                     </div>
                   ))}
