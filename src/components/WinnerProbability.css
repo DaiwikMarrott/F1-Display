@@ -26,12 +26,33 @@
 
 .win-prob__row {
   display: grid;
-  grid-template-columns: 20px 1fr 100px 44px;
+  grid-template-columns: 20px minmax(48px, 1fr) minmax(52px, 100px) 44px;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
   border-bottom: 1px solid #1a1a28;
   transition: background 0.15s ease;
+}
+
+@media (max-width: 1400px) {
+  .win-prob__header {
+    padding: 9px 10px;
+  }
+
+  .win-prob__row {
+    grid-template-columns: 18px minmax(48px, 1fr) 52px 38px;
+    gap: 5px;
+    padding: 7px 9px;
+  }
+
+  .win-prob__title {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+  }
+
+  .win-prob__pct {
+    font-size: 11px;
+  }
 }
 
 .win-prob__row:last-child {

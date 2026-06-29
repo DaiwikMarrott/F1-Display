@@ -137,4 +137,51 @@ describe('App critical UI flows', () => {
     await user.click(screen.getByText('WIN PROBABILITY (EST.)'));
     expect(selector).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('uses session-aware headings and hides race-only projections for practice', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      session: sessions[1],
+      currentLap: 0,
+      totalLaps: 0,
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('PRACTICE 1 ORDER')).toBeInTheDocument();
+    expect(screen.queryByText('WIN PROBABILITY (EST.)')).not.toBeInTheDocument();
+    expect(screen.queryByText('REMAINING')).not.toBeInTheDocument();
+  });
+
+  it('renders an honest empty state for an upcoming race', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      standings: [],
+      session: {
+        ...sessions[0],
+        session_key: 3,
+        status: 'upcoming',
+        date_start: '2099-06-01T12:00:00Z',
+        date_end: '2099-06-01T14:00:00Z',
+      },
+      currentLap: 0,
+      totalLaps: 0,
+      dataQuality: {
+        provenance: 'unavailable',
+        availability: 'empty',
+        freshness: 'unknown',
+        updatedAt: null,
+        message: 'Upcoming session',
+      },
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('Race · UPCOMING')).toBeInTheDocument();
+    expect(screen.getByText('RACE ORDER')).toBeInTheDocument();
+    expect(screen.queryByText('WIN PROBABILITY (EST.)')).not.toBeInTheDocument();
+    expect(screen.queryByText('REMAINING')).not.toBeInTheDocument();
+    expect(screen.getAllByText('NO SESSION DATA').length).toBeGreaterThan(0);
+    expect(screen.queryByText('OPENF1 DATA')).not.toBeInTheDocument();
+  });
 });

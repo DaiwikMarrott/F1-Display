@@ -21,6 +21,8 @@ import { getDataQualityLabel } from './types/dataQuality';
 import {
   getSessionDisplayLabel,
   getSessionOptions,
+  isRaceSession,
+  normalizeSessionType,
 } from './domain/sessionSelection';
 import { getAnalyticsProvenance } from './domain/analyticsProvenance';
 import './App.css';
@@ -57,7 +59,13 @@ const App: React.FC = () => {
     ? `${session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
-  const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
+  const sessionType = session
+    ? getSessionDisplayLabel(session)
+    : (isLoading ? 'LOADING...' : 'DEMO DATA');
+  const raceSession = session ? isRaceSession(session) : false;
+  const standingsTitle = session
+    ? `${normalizeSessionType(session).toUpperCase()} ${raceSession && standings.length > 0 ? 'STANDINGS' : 'ORDER'}`
+    : 'SESSION ORDER';
 
   const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
   const analyticsProvenance = getAnalyticsProvenance(analyticsPanelTab, dataQuality);
@@ -233,11 +241,13 @@ const App: React.FC = () => {
           <div className="app-main__content">
             {/* Left Sidebar */}
             <aside className="app-sidebar app-sidebar--left">
-              <WinnerProbability standings={standings} />
+              {raceSession && standings.length > 0 && <WinnerProbability standings={standings} />}
               <LiveStandings
                 standings={standings}
                 currentLap={currentLap}
                 totalLaps={totalLaps}
+                title={standingsTitle}
+                showRaceProgress={raceSession && standings.length > 0}
               />
             </aside>
 
@@ -255,7 +265,7 @@ const App: React.FC = () => {
             {/* Right Sidebar */}
             <aside className="app-sidebar app-sidebar--right">
               {/* Analytics Tab Controls */}
-              <div className="app-analytics-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingBottom: '6px' }}>
+              <div className="app-analytics-tabs">
                 {([
                   { key: 'timing', icon: '⏱', label: 'TIMING' },
                   { key: 'tires', icon: '🛞', label: 'TIRES' },
@@ -274,9 +284,8 @@ const App: React.FC = () => {
                     className={`app-analytics-tab ${analyticsPanelTab === tab.key ? 'active' : ''}`}
                     onClick={() => setAnalyticsPanelTab(tab.key)}
                     title={tab.label}
-                    style={{ flex: '1 1 20%', minWidth: '60px', padding: '6px 2px', fontSize: '9px' }}
                   >
-                    <span style={{ fontSize: '11px', marginBottom: '2px', display: 'block' }}>{tab.icon}</span>
+                    <span className="app-analytics-tab__icon">{tab.icon}</span>
                     {tab.label}
                   </button>
                 ))}

@@ -34,8 +34,9 @@
 
 .timing-tower__col-headers {
   display: grid;
-  grid-template-columns: 44px 1fr 80px 100px 52px;
-  padding: 6px 16px 6px 20px;
+  grid-template-columns: 36px minmax(60px, 1fr) 50px 72px 38px;
+  gap: 4px;
+  padding: 6px 8px 6px 10px;
   background: #0d0d1a;
   border-bottom: 1px solid #2f2f3f;
   font-size: 10px;
@@ -51,9 +52,10 @@
 
 .timing-row {
   display: grid;
-  grid-template-columns: 44px 1fr 80px 100px 52px;
+  grid-template-columns: 36px minmax(60px, 1fr) 50px 72px 38px;
+  gap: 4px;
   align-items: center;
-  padding: 5px 16px 5px 4px;
+  padding: 5px 8px 5px 2px;
   border-bottom: 1px solid #1a1a28;
   cursor: default;
   transition: background 0.15s ease;
@@ -119,7 +121,7 @@
   padding-left: 4px;
 }
 
-.driver-number {
+.timing-row__driver-number {
   font-weight: 900;
   font-size: 14px;
   min-width: 22px;
@@ -160,7 +162,7 @@
   color: #c080ff;
 }
 
-.fl-badge {
+.timing-row__fl-badge {
   font-size: 9px;
   font-weight: 700;
   background: #9100ff;
@@ -182,14 +184,14 @@
   color: #000;
 }
 
-.compound-soft     { background: #e8002d; color: #fff; }
-.compound-medium   { background: #f5c842; }
-.compound-hard     { background: #d4d4d4; }
-.compound-inter    { background: #39b54a; color: #fff; }
-.compound-wet      { background: #0073e6; color: #fff; }
-.compound-unknown  { background: #555566; color: #fff; }
+.timing-compound--soft     { background: #e8002d; color: #fff; }
+.timing-compound--medium   { background: #f5c842; }
+.timing-compound--hard     { background: #d4d4d4; }
+.timing-compound--inter    { background: #39b54a; color: #fff; }
+.timing-compound--wet      { background: #0073e6; color: #fff; }
+.timing-compound--unknown  { background: #555566; color: #fff; }
 
-.tyre-age {
+.timing-row__tyre-age {
   font-size: 11px;
   color: #888899;
   min-width: 18px;
@@ -201,3 +203,40 @@
 .col-gap    { }
 .col-lap    { }
 .col-tyre   { display: flex; align-items: center; gap: 4px; }
+
+@media (max-width: 1400px) {
+  .timing-tower__header {
+    padding: 9px 10px;
+  }
+
+  .timing-tower__col-headers,
+  .timing-row {
+    grid-template-columns: 34px minmax(54px, 1fr) 46px 66px 34px;
+    gap: 3px;
+  }
+
+  .timing-tower__col-headers {
+    padding-inline: 7px;
+    font-size: 8px;
+    letter-spacing: 0.8px;
+  }
+
+  .timing-row {
+    padding-right: 6px;
+  }
+
+  .timing-row__driver {
+    gap: 4px;
+  }
+
+  .timing-row__driver-number,
+  .driver-acronym,
+  .timing-row__gap,
+  .timing-row__lastlap {
+    font-size: 10px;
+  }
+
+  .timing-row__tyre-age {
+    display: none;
+  }
+}
