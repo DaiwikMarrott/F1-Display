@@ -184,4 +184,32 @@ describe('App critical UI flows', () => {
     expect(screen.getAllByText('NO SESSION DATA').length).toBeGreaterThan(0);
     expect(screen.queryByText('OPENF1 DATA')).not.toBeInTheDocument();
   });
+
+  it('does not carry position-change history across session identity changes', () => {
+    const current = vi.mocked(useF1Data)();
+    const { container, rerender } = render(<App />);
+
+    expect(container.querySelector('.position-change')).not.toBeInTheDocument();
+
+    vi.mocked(useF1Data).mockReturnValue({
+      ...current,
+      session: sessions[1],
+      standings: [{
+        ...standings[0],
+        position: standings[0].position + 1,
+      }],
+      currentLap: 0,
+      totalLaps: 0,
+    });
+    rerender(<App />);
+
+    expect(screen.getByText('PRACTICE 1 ORDER')).toBeInTheDocument();
+    expect(container.querySelector('.position-change')).not.toBeInTheDocument();
+  });
+
+  it('keeps impossible numeric and placeholder strings out of a normal render', () => {
+    const { container } = render(<App />);
+
+    expect(container.textContent).not.toMatch(/\b(?:NaN|Infinity|undefined|null)\b|\+-/);
+  });
 });

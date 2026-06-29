@@ -119,4 +119,42 @@ describe('bounded OpenF1 location loading', () => {
     expect(result.mode).toBe('estimated');
     expect(result.positions).toEqual([]);
   });
+
+  it('keeps only valid drivers from a partial synchronized snapshot', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({ data: geometry, quality: createDataQuality('openf1') })
+      .mockResolvedValueOnce({
+        data: [
+          location(1, 0, 0, 45),
+          location(2, 900, 600, 45),
+          { ...location(3, 400, 400, 45), x: Number.NaN },
+        ],
+        quality: createDataQuality('openf1', { availability: 'partial' }),
+      });
+
+    const result = await loadSessionLocationMap(
+      session(),
+      [lap(1, 60, '2026-06-01T13:58:00Z')],
+      fetcher,
+    );
+
+    expect(result.mode).toBe('latest-known');
+    expect(result.positions.map(point => point.driver_number)).toEqual([1, 2]);
+  });
+
+  it('preserves stale cache provenance in the map mode', async () => {
+    const stale = createDataQuality('cache', { freshness: 'stale' });
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({ data: geometry, quality: stale })
+      .mockResolvedValueOnce({ data: snapshot, quality: stale });
+
+    const result = await loadSessionLocationMap(
+      session(),
+      [lap(1, 60, '2026-06-01T13:58:00Z')],
+      fetcher,
+    );
+
+    expect(result.mode).toBe('stale');
+    expect(result.quality).toMatchObject({ provenance: 'cache', freshness: 'stale' });
+  });
 });

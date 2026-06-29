@@ -54,7 +54,7 @@ describe('track projection', () => {
     ])).toBe(true);
   });
 
-  it('labels live, cached, estimated, and unavailable states distinctly', () => {
+  it('labels every map freshness and fallback state distinctly', () => {
     const base = { geometry: [], positions: [], snapshotAt: null };
     expect(getTrackMapLabel({
       ...base,
@@ -68,9 +68,24 @@ describe('track projection', () => {
     })).toBe('CACHED POSITIONS');
     expect(getTrackMapLabel({
       ...base,
+      quality: createDataQuality('cache', { freshness: 'stale' }),
+      mode: 'stale',
+    })).toBe('STALE POSITIONS');
+    expect(getTrackMapLabel({
+      ...base,
       quality: createDataQuality('estimated'),
       mode: 'estimated',
     })).toBe('ESTIMATED POSITIONS');
+    expect(getTrackMapLabel({
+      ...base,
+      quality: createDataQuality('demo'),
+      mode: 'demo',
+    })).toBe('DEMO SIMULATION');
+    expect(getTrackMapLabel({
+      ...base,
+      quality: createDataQuality('unavailable', { availability: 'loading' }),
+      mode: 'loading',
+    })).toBe('LOADING MAP');
     expect(getTrackMapLabel({
       ...base,
       quality: createDataQuality('unavailable'),
