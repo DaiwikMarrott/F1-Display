@@ -122,4 +122,19 @@ describe('App critical UI flows', () => {
     expect(screen.getByRole('button', { name: /Spain Catalunya Race/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Spain Catalunya Practice 1/ })).toBeInTheDocument();
   });
+
+  it('closes the session selector with Escape or an outside click', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const selector = screen.getByRole('button', { name: 'Select session' });
+
+    await user.click(selector);
+    expect(selector).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(selector).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(selector);
+    await user.click(screen.getByText('WIN PROBABILITY (EST.)'));
+    expect(selector).toHaveAttribute('aria-expanded', 'false');
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
 import DriverTooltip from './DriverTooltip';
 import { formatLapProgress, formatLapTime } from '../utils/formatters';
@@ -50,6 +50,12 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
   };
 
   const hoveredStanding = standings.find(s => s.driver.driver_number === hoveredDriver);
+
+  useEffect(() => {
+    if (hoveredDriver !== null && !hoveredStanding) {
+      setHoveredDriver(null);
+    }
+  }, [hoveredDriver, hoveredStanding]);
 
   return (
     <div className="timing-tower">

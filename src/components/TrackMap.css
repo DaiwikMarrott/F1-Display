@@ -82,3 +82,13 @@
 .track-map__driver-dot:hover circle {
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
 }
+
+.track-map__driver-dot:focus {
+  outline: none;
+}
+
+.track-map__driver-dot:focus-visible circle {
+  filter: drop-shadow(0 0 10px #f5a623);
+  stroke: #f5a623;
+  stroke-width: 3px;
+}

@@ -181,6 +181,13 @@
   transform: translateY(1px);
 }
 
+.app-topbar__race-btn:focus-visible,
+.app-topbar__race-option:focus-visible,
+.app-analytics-tab:focus-visible {
+  outline: 2px solid #f5a623;
+  outline-offset: 2px;
+}
+
 .app-topbar__race-dropdown {
   position: absolute;
   top: 100%;
@@ -538,5 +545,16 @@
   .app-topbar__logo-text {
     font-size: 18px;
     padding: 2px 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

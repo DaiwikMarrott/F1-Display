@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useCallback } from 'react';
+import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import type { DriverStanding, Session } from '../types/f1';
 import type { TrackMapData } from '../types/map';
 import { getCircuitForSession } from '../data/circuits';
@@ -136,16 +136,16 @@ const TrackMap: React.FC<Props> = ({
 
   const handleDriverHover = useCallback((standing: DriverStanding, e: React.MouseEvent) => {
     setHoveredDriver(standing);
-    // Convert mouse position to be relative to the track-map container
-    const rect = (e.currentTarget as Element).closest('.track-map')?.getBoundingClientRect();
-    if (rect) {
-      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    }
+    setTooltipPos({ x: e.clientX, y: e.clientY });
   }, []);
 
   const handleDriverLeave = useCallback(() => {
     setHoveredDriver(null);
   }, []);
+
+  useEffect(() => {
+    setHoveredDriver(null);
+  }, [session?.session_key, session?.meeting_key, standings, mapData.positions]);
 
   const driverPositionsMap = useMemo(() => {
     if (!showMarkers) return new Map();
@@ -283,6 +283,16 @@ const TrackMap: React.FC<Props> = ({
           const teamColor = `#${s.driver.team_colour || 'ffffff'}`;
           const isLeader = s.position === 1;
           const dotRadius = isLeader ? 12 : 10;
+          const handleFocus = () => {
+            const rect = svgRef.current?.getBoundingClientRect();
+            setHoveredDriver(s);
+            setTooltipPos(rect
+              ? {
+                x: rect.left + (pos.x / SVG_WIDTH) * rect.width,
+                y: rect.top + (pos.y / SVG_HEIGHT) * rect.height,
+              }
+              : { x: pos.x, y: pos.y });
+          };
 
           return (
             <g
@@ -291,6 +301,11 @@ const TrackMap: React.FC<Props> = ({
               onMouseEnter={(e) => handleDriverHover(s, e)}
               onMouseMove={(e) => handleDriverHover(s, e)}
               onMouseLeave={handleDriverLeave}
+              onFocus={handleFocus}
+              onBlur={handleDriverLeave}
+              tabIndex={0}
+              role="button"
+              aria-label={`Position ${s.position}, ${s.driver.full_name}, ${s.driver.team_name}`}
               style={{ cursor: 'pointer' }}
             >
               {/* Glow/shadow effect */}

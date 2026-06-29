@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import type { Session } from '../types/f1';
+import type { DriverStanding, Location, Session } from '../types/f1';
 import { createDataQuality } from '../types/dataQuality';
 import type { TrackMapData } from '../types/map';
 import TrackMap from './TrackMap';
@@ -30,6 +31,40 @@ function mapData(overrides: Partial<TrackMapData> = {}): TrackMapData {
     ...overrides,
   };
 }
+
+function location(index: number, driver = 1): Location {
+  return {
+    driver_number: driver,
+    x: index * 100,
+    y: Math.sin(index / 3) * 700,
+    z: 0,
+    date: `2026-06-01T12:00:${String(index).padStart(2, '0')}Z`,
+    session_key: 1,
+    meeting_key: 1,
+  };
+}
+
+const standing: DriverStanding = {
+  driver: {
+    driver_number: 1,
+    broadcast_name: 'TEST DRIVER',
+    full_name: 'Test Driver',
+    name_acronym: 'TST',
+    team_name: 'Test Team',
+    team_colour: 'FFFFFF',
+    session_key: 1,
+  },
+  position: 1,
+  gapToLeader: 'LEADER',
+  lastLap: 90,
+  bestLap: 89,
+  isFastestLap: true,
+  currentStint: null,
+  tireAge: 5,
+  pitCount: 0,
+  location: null,
+  winProbability: 100,
+};
 
 describe('TrackMap circuit states', () => {
   it('renders the selected circuit instead of a country fallback', () => {
@@ -109,5 +144,43 @@ describe('TrackMap circuit states', () => {
 
     expect(screen.getByLabelText('Miami International Autodrome track map')).toBeInTheDocument();
     expect(screen.queryByLabelText('Las Vegas Grand Prix track map')).not.toBeInTheDocument();
+  });
+
+  it('exposes marker details to keyboard focus and clears them on session change', async () => {
+    const user = userEvent.setup();
+    const geometry = Array.from({ length: 30 }, (_, index) => location(index));
+    const positions = [location(10)];
+    const { rerender } = render(
+      <TrackMap
+        standings={[standing]}
+        session={session({})}
+        currentLap={10}
+        isLoading={false}
+        mapData={mapData({
+          geometry,
+          positions,
+          mode: 'latest-known',
+          quality: createDataQuality('openf1'),
+        })}
+      />,
+    );
+
+    await user.tab();
+    expect(screen.getByRole('button', {
+      name: 'Position 1, Test Driver, Test Team',
+    })).toHaveFocus();
+    expect(screen.getByRole('tooltip')).toHaveTextContent('Test Driver');
+
+    rerender(
+      <TrackMap
+        standings={[]}
+        session={session({ session_key: 2, meeting_key: 2, circuit_short_name: 'Miami' })}
+        currentLap={0}
+        isLoading={false}
+        mapData={mapData()}
+      />,
+    );
+
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
 });

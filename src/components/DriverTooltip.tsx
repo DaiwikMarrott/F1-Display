@@ -2,6 +2,7 @@ import React from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
 import './DriverTooltip.css';
 import { safeTireAge } from '../utils/formatters';
+import { getTooltipPosition } from '../utils/tooltipPosition';
 
 interface Props {
   standing: DriverStanding;
@@ -53,14 +54,18 @@ const DriverTooltip: React.FC<Props> = ({ standing, x, y }) => {
   const estimatedTemp = estimateTemp(compound, tireAge);
   const teamColor = `#${driver.team_colour || 'ffffff'}`;
 
-  // Position tooltip near cursor but avoid overflow
-  const leftOffset = x + 20;
-  const topOffset = y - 10;
+  const position = getTooltipPosition(
+    x,
+    y,
+    typeof window === 'undefined' ? 1280 : window.innerWidth,
+    typeof window === 'undefined' ? 720 : window.innerHeight,
+  );
 
   return (
     <div
       className="driver-tooltip"
-      style={{ left: leftOffset, top: topOffset }}
+      style={{ left: position.left, top: position.top }}
+      role="tooltip"
     >
       <div className="driver-tooltip__header" style={{ borderLeftColor: teamColor }}>
         <span className="driver-tooltip__number" style={{ color: teamColor }}>

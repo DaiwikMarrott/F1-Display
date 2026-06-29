@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useF1Data } from './hooks/useF1Data';
 import useAnalytics from './hooks/useAnalytics';
 import { useIncidentDetection } from './hooks/useIncidentDetection';
@@ -51,6 +51,7 @@ const App: React.FC = () => {
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
   const [analyticsPanelTab, setAnalyticsPanelTab] = useState<AnalyticsTab>('timing');
+  const raceSelectorRef = useRef<HTMLDivElement>(null);
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
@@ -65,6 +66,26 @@ const App: React.FC = () => {
     setSelectedRaceKey(sessionKey);
     setShowRaceSelector(false);
   };
+
+  useEffect(() => {
+    if (!showRaceSelector) return undefined;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!raceSelectorRef.current?.contains(event.target as Node)) {
+        setShowRaceSelector(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowRaceSelector(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showRaceSelector]);
 
   const renderAnalyticsPanel = () => {
     switch (analyticsPanelTab) {
@@ -133,17 +154,23 @@ const App: React.FC = () => {
 
         <div className="app-topbar__right">
           {/* Race Selector */}
-          <div className="app-topbar__race-selector">
+          <div className="app-topbar__race-selector" ref={raceSelectorRef}>
             <button
               className="app-topbar__race-btn"
               onClick={() => setShowRaceSelector(!showRaceSelector)}
               title={`${sessionOptions.length} sessions available`}
               aria-label="Select session"
+              aria-expanded={showRaceSelector}
+              aria-haspopup="true"
+              aria-controls="session-selector-dropdown"
             >
               🏁 SESSIONS ({sessionOptions.length})
             </button>
             {showRaceSelector && (
-              <div className="app-topbar__race-dropdown">
+              <div
+                className="app-topbar__race-dropdown"
+                id="session-selector-dropdown"
+              >
                 <button
                   className={`app-topbar__race-option ${selectedRaceKey === null ? 'active' : ''}`}
                   onClick={() => handleRaceSelect(null)}

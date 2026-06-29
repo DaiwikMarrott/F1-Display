@@ -169,7 +169,6 @@
 .standings-row:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(232, 0, 45, 0.4);
-  transform: translateX(4px);
 }
 
 .standings-row--leader {
