@@ -10,6 +10,7 @@
   flex-shrink: 0;
   max-height: 400px;
   font-family: 'Monaco', 'Courier New', monospace;
+  overflow: hidden;
 }
 
 /* ── Header ────────────────────────────────────────────── */
@@ -142,8 +143,8 @@
 /* ── Standings Row ────────────────────────────────────────────── */
 .standings-row {
   display: grid;
-  grid-template-columns: 50px 4px 1fr 90px 70px 80px auto;
-  gap: 8px;
+  grid-template-columns: 38px 3px minmax(0, 1fr) 58px 34px;
+  gap: 5px;
   align-items: center;
   padding: 8px;
   background: rgba(255, 255, 255, 0.03);
@@ -169,7 +170,6 @@
 .standings-row:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(232, 0, 45, 0.4);
-  transform: translateX(4px);
 }
 
 .standings-row--leader {
@@ -307,7 +307,7 @@
   gap: 6px;
 }
 
-.driver-number {
+.standings-row__driver-number {
   font-weight: 700;
   font-size: 11px;
   flex-shrink: 0;
@@ -371,7 +371,7 @@
   font-weight: 900;
 }
 
-.fl-badge {
+.standings-row__fl-badge {
   font-size: 8px;
   background: #ffaa00;
   color: #000;
@@ -400,35 +400,35 @@
   font-size: 13px;
 }
 
-.compound-soft {
+.standings-compound--soft {
   background: #e81846;
   border: 2px solid #ff6b6b;
 }
 
-.compound-medium {
+.standings-compound--medium {
   background: #ffd300;
   color: #000;
   border: 2px solid #ffff00;
 }
 
-.compound-hard {
+.standings-compound--hard {
   background: #f3f3f3;
   color: #000;
   border: 2px solid #ffffff;
 }
 
-.compound-intermediate {
+.standings-compound--intermediate {
   background: #00ff88;
   color: #000;
   border: 2px solid #00ff88;
 }
 
-.compound-wet {
+.standings-compound--wet {
   background: #0093cc;
   border: 2px solid #00d2ff;
 }
 
-.tire-age {
+.standings-row__tire-age {
   font-size: 10px;
   color: #888899;
   font-weight: 600;
@@ -498,19 +498,56 @@
 /* ── Responsive Design ────────────────────────────────────────────── */
 @media (max-width: 1400px) {
   .standings-row {
-    grid-template-columns: 44px 4px 1fr 80px 60px;
-    gap: 6px;
+    grid-template-columns: 34px 3px minmax(0, 1fr) 52px 28px;
+    gap: 4px;
+    padding: 6px 5px;
   }
 
   .standings-row__pitstops,
   .standings-row__winprob {
     display: none;
   }
+
+  .standings-row__position-badge {
+    width: 30px;
+    height: 30px;
+  }
+
+  .position-number {
+    font-size: 13px;
+  }
+
+  .standings-row__tire-age,
+  .driver-team {
+    display: none;
+  }
+
+  .tire-compound {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+
+  .live-standings {
+    padding: 9px;
+  }
+
+  .live-standings__header {
+    align-items: flex-start;
+  }
+
+  .live-standings__race-info {
+    gap: 6px;
+  }
+
+  .race-info__remaining {
+    display: none;
+  }
 }
 
 @media (max-width: 1000px) {
   .standings-row {
-    grid-template-columns: 40px 4px 1fr 70px;
+    grid-template-columns: 34px 3px minmax(0, 1fr) 52px 28px;
     gap: 4px;
   }
 

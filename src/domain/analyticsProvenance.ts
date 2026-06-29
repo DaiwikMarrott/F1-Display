@@ -17,6 +17,15 @@ export function getAnalyticsProvenance(
   tab: AnalyticsTabKey,
   source: DataQuality,
 ): { provenance: DataProvenance; label: string } {
+  if (source.availability === 'loading') {
+    return { provenance: 'unavailable', label: 'WAITING FOR DATA' };
+  }
+  if (source.availability === 'error') {
+    return { provenance: 'unavailable', label: 'DATA UNAVAILABLE' };
+  }
+  if (source.availability === 'empty' || source.provenance === 'unavailable') {
+    return { provenance: 'unavailable', label: 'NO SESSION DATA' };
+  }
   if (source.provenance === 'demo') {
     return { provenance: 'demo', label: 'DEMO SIMULATION' };
   }

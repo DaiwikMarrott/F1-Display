@@ -1,6 +1,7 @@
 .app {
   display: flex;
   flex-direction: column;
+  height: 100vh;
   min-height: 100vh;
   background: #15151e;
 }
@@ -181,6 +182,13 @@
   transform: translateY(1px);
 }
 
+.app-topbar__race-btn:focus-visible,
+.app-topbar__race-option:focus-visible,
+.app-analytics-tab:focus-visible {
+  outline: 2px solid #f5a623;
+  outline-offset: 2px;
+}
+
 .app-topbar__race-dropdown {
   position: absolute;
   top: 100%;
@@ -305,6 +313,7 @@
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr) 340px;
   grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "left center right";
   gap: 16px;
   width: 100%;
   height: 100%;
@@ -339,10 +348,12 @@
 }
 
 .app-sidebar--left {
+  grid-area: left;
   min-width: 280px;
 }
 
 .app-sidebar--right {
+  grid-area: right;
   min-width: 340px;
   max-width: 340px;
   display: flex;
@@ -353,23 +364,24 @@
 /* Analytics Tabs */
 .app-analytics-tabs {
   display: flex;
-  gap: 1px;
-  padding: 6px 6px 0 6px;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
   background: linear-gradient(180deg, #0a0a14 0%, #1a1a28 100%);
   border-bottom: 2px solid #e8002d;
   flex-shrink: 0;
 }
 
 .app-analytics-tab {
-  flex: 1;
-  min-width: 0;
-  padding: 7px 6px;
+  flex: 1 1 20%;
+  min-width: 54px;
+  padding: 6px 2px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(232, 0, 45, 0.2);
   border-bottom: none;
   border-radius: 8px 8px 0 0;
   color: #888899;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.6px;
   cursor: pointer;
@@ -380,6 +392,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.app-analytics-tab__icon {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 11px;
 }
 
 .app-analytics-tab:hover {
@@ -420,6 +438,7 @@
 }
 
 .app-main__center {
+  grid-area: center;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -487,6 +506,36 @@
   }
 }
 
+@media (max-width: 1180px) {
+  .app {
+    height: auto;
+  }
+
+  .app-main {
+    overflow: auto;
+  }
+
+  .app-main__content {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-rows: minmax(520px, calc(100vh - 92px)) auto;
+    grid-template-areas:
+      "center right"
+      "left left";
+    height: auto;
+    min-height: 100%;
+  }
+
+  .app-sidebar--left {
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .app-sidebar--right {
+    min-width: 320px;
+    max-width: 320px;
+  }
+}
+
 @media (max-width: 768px) {
   .app-main {
     grid-template-columns: 1fr;
@@ -499,12 +548,26 @@
     width: 100%;
     height: auto;
     gap: 16px;
+    padding: 12px;
   }
 
   .app-sidebar--left,
   .app-sidebar--right {
     min-width: 100%;
     max-width: none;
+  }
+
+  .app-main__center {
+    order: 1;
+    min-height: min(70vh, 620px);
+  }
+
+  .app-sidebar--left {
+    order: 2;
+  }
+
+  .app-sidebar--right {
+    order: 3;
   }
 
   .app-topbar {
@@ -538,5 +601,31 @@
   .app-topbar__logo-text {
     font-size: 18px;
     padding: 2px 8px;
+  }
+
+  .app-topbar__center {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .app-topbar__race-dropdown {
+    position: fixed;
+    top: 58px;
+    right: 8px;
+    left: 8px;
+    min-width: 0;
+    max-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

@@ -25,4 +25,16 @@ describe('analytics provenance', () => {
     expect(getAnalyticsProvenance('timing', createDataQuality('openf1', { availability: 'partial' })).label)
       .toBe('PARTIAL OPENF1 DATA');
   });
+
+  it('does not claim OpenF1 provenance while session data is unavailable', () => {
+    expect(getAnalyticsProvenance('timing', createDataQuality('unavailable', {
+      availability: 'loading',
+    }))).toEqual({ provenance: 'unavailable', label: 'WAITING FOR DATA' });
+    expect(getAnalyticsProvenance('timing', createDataQuality('unavailable', {
+      availability: 'empty',
+    }))).toEqual({ provenance: 'unavailable', label: 'NO SESSION DATA' });
+    expect(getAnalyticsProvenance('timing', createDataQuality('openf1', {
+      availability: 'error',
+    }))).toEqual({ provenance: 'unavailable', label: 'DATA UNAVAILABLE' });
+  });
 });

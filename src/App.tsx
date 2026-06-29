@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useF1Data } from './hooks/useF1Data';
 import useAnalytics from './hooks/useAnalytics';
 import { useIncidentDetection } from './hooks/useIncidentDetection';
@@ -21,6 +21,8 @@ import { getDataQualityLabel } from './types/dataQuality';
 import {
   getSessionDisplayLabel,
   getSessionOptions,
+  isRaceSession,
+  normalizeSessionType,
 } from './domain/sessionSelection';
 import { getAnalyticsProvenance } from './domain/analyticsProvenance';
 import './App.css';
@@ -42,6 +44,7 @@ const App: React.FC = () => {
     pitNotifications,
     dismissPitNotification,
     dataQuality,
+    mapData,
   } = useF1Data();
 
   // Analytics engine
@@ -50,12 +53,19 @@ const App: React.FC = () => {
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
   const [analyticsPanelTab, setAnalyticsPanelTab] = useState<AnalyticsTab>('timing');
+  const raceSelectorRef = useRef<HTMLDivElement>(null);
 
   const raceName = session
     ? `${session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
-  const sessionType = session?.session_name ?? (isLoading ? 'LOADING...' : 'DEMO DATA');
+  const sessionType = session
+    ? getSessionDisplayLabel(session)
+    : (isLoading ? 'LOADING...' : 'DEMO DATA');
+  const raceSession = session ? isRaceSession(session) : false;
+  const standingsTitle = session
+    ? `${normalizeSessionType(session).toUpperCase()} ${raceSession && standings.length > 0 ? 'STANDINGS' : 'ORDER'}`
+    : 'SESSION ORDER';
 
   const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
   const analyticsProvenance = getAnalyticsProvenance(analyticsPanelTab, dataQuality);
@@ -64,6 +74,26 @@ const App: React.FC = () => {
     setSelectedRaceKey(sessionKey);
     setShowRaceSelector(false);
   };
+
+  useEffect(() => {
+    if (!showRaceSelector) return undefined;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!raceSelectorRef.current?.contains(event.target as Node)) {
+        setShowRaceSelector(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowRaceSelector(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showRaceSelector]);
 
   const renderAnalyticsPanel = () => {
     switch (analyticsPanelTab) {
@@ -132,17 +162,23 @@ const App: React.FC = () => {
 
         <div className="app-topbar__right">
           {/* Race Selector */}
-          <div className="app-topbar__race-selector">
+          <div className="app-topbar__race-selector" ref={raceSelectorRef}>
             <button
               className="app-topbar__race-btn"
               onClick={() => setShowRaceSelector(!showRaceSelector)}
               title={`${sessionOptions.length} sessions available`}
               aria-label="Select session"
+              aria-expanded={showRaceSelector}
+              aria-haspopup="true"
+              aria-controls="session-selector-dropdown"
             >
               🏁 SESSIONS ({sessionOptions.length})
             </button>
             {showRaceSelector && (
-              <div className="app-topbar__race-dropdown">
+              <div
+                className="app-topbar__race-dropdown"
+                id="session-selector-dropdown"
+              >
                 <button
                   className={`app-topbar__race-option ${selectedRaceKey === null ? 'active' : ''}`}
                   onClick={() => handleRaceSelect(null)}
@@ -198,27 +234,38 @@ const App: React.FC = () => {
           <span className="app-loading__text">Loading F1 Data...</span>
         </div>
       ) : (
-        <main className="app-main">
+        <main
+          className="app-main"
+          key={`${session?.meeting_key ?? 'none'}-${session?.session_key ?? selectedRaceKey ?? 'latest'}`}
+        >
           <div className="app-main__content">
             {/* Left Sidebar */}
             <aside className="app-sidebar app-sidebar--left">
-              <WinnerProbability standings={standings} />
+              {raceSession && standings.length > 0 && <WinnerProbability standings={standings} />}
               <LiveStandings
                 standings={standings}
                 currentLap={currentLap}
                 totalLaps={totalLaps}
+                title={standingsTitle}
+                showRaceProgress={raceSession && standings.length > 0}
               />
             </aside>
 
             {/* Central Track Map */}
             <section className="app-main__center">
-              <TrackMap standings={standings} raceCountry={session?.country_name} currentLap={currentLap} />
+              <TrackMap
+                standings={standings}
+                session={session}
+                currentLap={currentLap}
+                isLoading={isLoading}
+                mapData={mapData}
+              />
             </section>
 
             {/* Right Sidebar */}
             <aside className="app-sidebar app-sidebar--right">
               {/* Analytics Tab Controls */}
-              <div className="app-analytics-tabs" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', paddingBottom: '6px' }}>
+              <div className="app-analytics-tabs">
                 {([
                   { key: 'timing', icon: '⏱', label: 'TIMING' },
                   { key: 'tires', icon: '🛞', label: 'TIRES' },
@@ -237,9 +284,8 @@ const App: React.FC = () => {
                     className={`app-analytics-tab ${analyticsPanelTab === tab.key ? 'active' : ''}`}
                     onClick={() => setAnalyticsPanelTab(tab.key)}
                     title={tab.label}
-                    style={{ flex: '1 1 20%', minWidth: '60px', padding: '6px 2px', fontSize: '9px' }}
                   >
-                    <span style={{ fontSize: '11px', marginBottom: '2px', display: 'block' }}>{tab.icon}</span>
+                    <span className="app-analytics-tab__icon">{tab.icon}</span>
                     {tab.label}
                   </button>
                 ))}

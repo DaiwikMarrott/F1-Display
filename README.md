@@ -11,7 +11,7 @@ F1-Display is a React, TypeScript, and Vite Formula 1 heads-up display. The appl
 | `DERIVED` | A deterministic calculation based on available race data. |
 | `ESTIMATED` | A deterministic model where the required live measurement is unavailable. |
 | `DEMO SIMULATION` | Seeded synthetic data used only when the app is explicitly in demo fallback mode. |
-| `UNAVAILABLE` / `WAITING FOR DATA` | The app does not have enough valid information to display the metric. |
+| `UNAVAILABLE` / `WAITING FOR DATA` / `NO SESSION DATA` | The app does not have enough valid information to display the metric. |
 
 The analytics source strip above the active panel identifies whether the panel is OpenF1-backed, derived, estimated, or demo-only.
 
@@ -34,7 +34,18 @@ OpenF1 position responses used here do not provide trustworthy gap-to-leader tim
 - Winner probability is an unofficial deterministic estimate.
 - Sector splits, strategy scenarios, form, and telemetry are deterministic estimates, not official telemetry.
 - Incident alerts, team radio, and weather are deterministic demo simulations and are labeled as non-live feeds.
-- Track positions use OpenF1 location points when available; otherwise the map explicitly shows simulated positions.
+- Track positions use one bounded OpenF1 lap trace and a narrow synchronized position snapshot when valid data is available.
+- Completed sessions are labeled `LATEST KNOWN` with a snapshot time; cached and stale positions retain separate labels.
+- If OpenF1 geometry or synchronized positions are missing or collapsed, the map uses deterministic estimated positions and labels them `ESTIMATED POSITIONS`.
+
+## Session and map behavior
+
+- Selecting a session clears the prior session’s standings, laps, analytics, pits, map, hover, and position-change state immediately.
+- Late responses from an older selection cannot overwrite the current selection.
+- Circuit identity comes from the selected session’s circuit name first. Miami, Austin, Las Vegas, Catalunya, and Madrid resolve independently; unsupported circuits show an unavailable layout.
+- Location history requests are bounded by driver and lap dates. Geometry is cached per session, while live marker snapshots refresh on the existing visibility-aware cadence.
+- Completed sessions never poll repeatedly. Upcoming sessions render explicit no-data states and do not inherit old or demo race details.
+- Map markers with invalid or collapsed coordinates are omitted rather than placed at the center.
 
 ## Reliability behavior
 
@@ -79,10 +90,12 @@ Tests use Vitest, React Testing Library, jsdom, and mocked fetch functions. They
 ## Current limitations
 
 - OpenF1 availability and historical completeness vary by season and endpoint.
+- OpenF1 location coverage can be sparse. A bounded reference lap may be unavailable even when timing data exists, causing an explicitly labeled estimated map.
+- The map is a latest synchronized snapshot, not a historical replay. Full replay and scrubbing are deferred.
 - Circuit lap totals are maintained locally; an unknown or newly introduced circuit may show an unavailable total until metadata is added.
-- The application does not yet ingest official weather, team radio, race-control, interval, or full car-telemetry feeds.
+- The application does not ingest official weather, team radio, race-control, interval/gap, or full car-telemetry feeds.
 - Predictions and estimates have not been benchmarked against an external accuracy dataset and must not be treated as official strategy guidance.
-- Browser memory caching is not persisted between page reloads.
+- Browser memory caching is not persisted between page reloads; a persistent server-side cache is deferred.
 - The application is a client-side MVP and does not provide authentication, a server-side cache, or multi-user persistence.
 
 ## Architecture

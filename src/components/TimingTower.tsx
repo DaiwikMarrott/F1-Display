@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { DriverStanding, Stint } from '../types/f1';
 import DriverTooltip from './DriverTooltip';
 import { formatLapProgress, formatLapTime } from '../utils/formatters';
@@ -12,12 +12,12 @@ interface Props {
 
 function getCompoundClass(compound: Stint['compound'] | undefined): string {
   switch (compound) {
-    case 'SOFT':         return 'compound-soft';
-    case 'MEDIUM':       return 'compound-medium';
-    case 'HARD':         return 'compound-hard';
-    case 'INTERMEDIATE': return 'compound-inter';
-    case 'WET':          return 'compound-wet';
-    default:             return 'compound-unknown';
+    case 'SOFT':         return 'timing-compound--soft';
+    case 'MEDIUM':       return 'timing-compound--medium';
+    case 'HARD':         return 'timing-compound--hard';
+    case 'INTERMEDIATE': return 'timing-compound--inter';
+    case 'WET':          return 'timing-compound--wet';
+    default:             return 'timing-compound--unknown';
   }
 }
 
@@ -50,6 +50,12 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
   };
 
   const hoveredStanding = standings.find(s => s.driver.driver_number === hoveredDriver);
+
+  useEffect(() => {
+    if (hoveredDriver !== null && !hoveredStanding) {
+      setHoveredDriver(null);
+    }
+  }, [hoveredDriver, hoveredStanding]);
 
   return (
     <div className="timing-tower">
@@ -97,7 +103,7 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
               </span>
 
               <span className="col-driver timing-row__driver">
-                <span className="driver-number" style={{ color: teamColor }}>
+                <span className="timing-row__driver-number" style={{ color: teamColor }}>
                   {s.driver.driver_number}
                 </span>
                 <span className="driver-acronym">{s.driver.name_acronym}</span>
@@ -113,14 +119,14 @@ const TimingTower: React.FC<Props> = ({ standings, currentLap, totalLaps }) => {
 
               <span className={`col-lap timing-row__lastlap ${s.isFastestLap ? 'fastest-lap' : ''}`}>
                 {formatLapTime(s.lastLap)}
-                {s.isFastestLap && <span className="fl-badge">FL</span>}
+                {s.isFastestLap && <span className="timing-row__fl-badge">FL</span>}
               </span>
 
               <span className="col-tyre">
                 <span className={`tyre-badge ${getCompoundClass(s.currentStint?.compound)}`}>
                   {getCompoundLetter(s.currentStint?.compound)}
                 </span>
-                <span className="tyre-age">{s.tireAge >= 0 ? s.tireAge : '—'}</span>
+                <span className="timing-row__tyre-age">{s.tireAge >= 0 ? s.tireAge : '—'}</span>
               </span>
             </div>
           );

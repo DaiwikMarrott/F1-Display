@@ -1,8 +1,8 @@
-# F1 HUD Data Reliability Progress
+# F1 HUD Implementation Progress
 
 ## Current status
 
-The application has completed a data-reliability hardening pass focused on truthful UX, bounded OpenF1 usage, deterministic analytics, terminal error states, and automated verification.
+The application has completed both the data-reliability hardening pass and the UI/map finishing sprint. Session state, circuit identity, bounded map data, interaction behavior, responsive layouts, and data labels are covered by mocked automated tests and browser smoke checks.
 
 ## Completed checkpoints
 
@@ -53,14 +53,41 @@ The application has completed a data-reliability hardening pass focused on truth
    - Updated data-source definitions, commands, limitations, and feature claims.
    - Removed unsupported accuracy targets.
 
+## UI and map finishing sprint
+
+1. Session-state isolation — `3e5463b`
+   - Clears selected-session data synchronously and rejects stale, out-of-order responses.
+   - Upcoming and missing selected sessions remain empty instead of inheriting prior or unrelated demo state.
+
+2. Session-bound circuit identity — `02f4655`
+   - Resolves circuit names before country fallbacks and distinguishes Miami, Austin, Las Vegas, Catalunya, and Madrid.
+   - Unsupported circuits show an explicit unavailable layout.
+
+3. Bounded OpenF1 map projection — `a754bde`
+   - Uses a driver/date-bounded reference lap, a narrow synchronized marker snapshot, and one shared projection.
+   - Caches geometry per session, rejects collapsed coordinates, and labels live, latest-known, cached, stale, estimated, demo, and unavailable states.
+
+4. Stable interactions — `6c43b58`
+   - Clamps tooltips to the viewport, resets stale hover state, adds keyboard-accessible markers and visible focus, and supports Escape/outside-click selector dismissal.
+
+5. Responsive and session-aware UI — `200f510`
+   - Removes fixed-width panel overflow at 1280×720, 1024×768, and 768px.
+   - Adds a compact desktop layout, responsive tire cards, stable map sizing, namespaced timing/standings styles, and non-race/upcoming semantics.
+
+6. Regression coverage and truthful release documentation — `test: cover session map and polished UI flows` (this commit)
+   - Expands focused coverage for map freshness, partial location snapshots, session-remount history, and impossible rendered strings.
+   - Updates release documentation to match implemented behavior and deferred scope.
+
 ## Data-source summary
 
 - Real OpenF1: sessions, drivers, positions, laps, stints, pits, locations, recent finishing positions.
-- Cached: any previously successful OpenF1 response within its stale window.
+- Cached/stale: any previously successful OpenF1 response retained within its policy window or while revalidation is unavailable.
 - Derived: tire state, race progress, winner estimate, and comparisons computed from available data.
 - Estimated: sectors, strategy, form, and telemetry models where direct measurements are unavailable.
 - Demo-only: fallback standings, incidents, radio transcript, and weather simulation.
 - Unavailable: invalid, missing, future, incomplete, or unsupported metrics.
+
+For the map specifically, completed OpenF1 positions are `LATEST KNOWN`, not live. Invalid, sparse, or collapsed location data produces an explicitly labeled deterministic estimate or unavailable state.
 
 ## Verification
 
@@ -81,6 +108,7 @@ The tests use fixtures and mocked requests rather than the real OpenF1 service.
 
 - No official interval/gap feed is currently integrated.
 - Weather, radio, incidents, and full telemetry remain explicitly labeled simulations or estimates.
-- The cache is in-memory and browser-local.
+- Full map replay/scrubbing is not implemented; the map shows a synchronized snapshot.
+- The cache is in-memory and browser-local; a persistent server-side cache is deferred.
 - Unknown circuit lap counts remain unavailable.
 - No externally validated prediction-accuracy dataset is included.

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildDemoStandings, useF1Data } from './hooks/useF1Data';
 import useAnalytics, { calculateAnalytics } from './hooks/useAnalytics';
 import App from './App';
+import { INITIAL_TRACK_MAP_DATA } from './types/map';
 
 vi.mock('./hooks/useF1Data', async importOriginal => {
   const actual = await importOriginal<typeof import('./hooks/useF1Data')>();
@@ -82,6 +83,7 @@ describe('App critical UI flows', () => {
         updatedAt: 1,
         message: 'Demo fixture',
       },
+      mapData: INITIAL_TRACK_MAP_DATA,
     });
     vi.mocked(useAnalytics).mockReturnValue(analytics);
   });
@@ -119,5 +121,95 @@ describe('App critical UI flows', () => {
 
     expect(screen.getByRole('button', { name: /Spain Catalunya Race/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Spain Catalunya Practice 1/ })).toBeInTheDocument();
+  });
+
+  it('closes the session selector with Escape or an outside click', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const selector = screen.getByRole('button', { name: 'Select session' });
+
+    await user.click(selector);
+    expect(selector).toHaveAttribute('aria-expanded', 'true');
+    await user.keyboard('{Escape}');
+    expect(selector).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(selector);
+    await user.click(screen.getByText('WIN PROBABILITY (EST.)'));
+    expect(selector).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('uses session-aware headings and hides race-only projections for practice', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      session: sessions[1],
+      currentLap: 0,
+      totalLaps: 0,
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('PRACTICE 1 ORDER')).toBeInTheDocument();
+    expect(screen.queryByText('WIN PROBABILITY (EST.)')).not.toBeInTheDocument();
+    expect(screen.queryByText('REMAINING')).not.toBeInTheDocument();
+  });
+
+  it('renders an honest empty state for an upcoming race', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      standings: [],
+      session: {
+        ...sessions[0],
+        session_key: 3,
+        status: 'upcoming',
+        date_start: '2099-06-01T12:00:00Z',
+        date_end: '2099-06-01T14:00:00Z',
+      },
+      currentLap: 0,
+      totalLaps: 0,
+      dataQuality: {
+        provenance: 'unavailable',
+        availability: 'empty',
+        freshness: 'unknown',
+        updatedAt: null,
+        message: 'Upcoming session',
+      },
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('Race · UPCOMING')).toBeInTheDocument();
+    expect(screen.getByText('RACE ORDER')).toBeInTheDocument();
+    expect(screen.queryByText('WIN PROBABILITY (EST.)')).not.toBeInTheDocument();
+    expect(screen.queryByText('REMAINING')).not.toBeInTheDocument();
+    expect(screen.getAllByText('NO SESSION DATA').length).toBeGreaterThan(0);
+    expect(screen.queryByText('OPENF1 DATA')).not.toBeInTheDocument();
+  });
+
+  it('does not carry position-change history across session identity changes', () => {
+    const current = vi.mocked(useF1Data)();
+    const { container, rerender } = render(<App />);
+
+    expect(container.querySelector('.position-change')).not.toBeInTheDocument();
+
+    vi.mocked(useF1Data).mockReturnValue({
+      ...current,
+      session: sessions[1],
+      standings: [{
+        ...standings[0],
+        position: standings[0].position + 1,
+      }],
+      currentLap: 0,
+      totalLaps: 0,
+    });
+    rerender(<App />);
+
+    expect(screen.getByText('PRACTICE 1 ORDER')).toBeInTheDocument();
+    expect(container.querySelector('.position-change')).not.toBeInTheDocument();
+  });
+
+  it('keeps impossible numeric and placeholder strings out of a normal render', () => {
+    const { container } = render(<App />);
+
+    expect(container.textContent).not.toMatch(/\b(?:NaN|Infinity|undefined|null)\b|\+-/);
   });
 });

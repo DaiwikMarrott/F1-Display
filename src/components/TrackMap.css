@@ -9,6 +9,7 @@
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(232, 0, 45, 0.4), inset 0 0 20px rgba(232, 0, 45, 0.1);
   position: relative;
+  min-height: 520px;
 }
 
 .track-map__header {
@@ -30,7 +31,7 @@
   text-transform: uppercase;
 }
 
-.track-map__demo-badge {
+.track-map__status-badge {
   font-size: 9px;
   font-weight: 700;
   background: rgba(232, 0, 45, 0.15);
@@ -42,14 +43,53 @@
   text-transform: uppercase;
 }
 
+.track-map__state {
+  flex: 1;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px;
+  color: #888899;
+  text-align: center;
+}
+
+.track-map__state strong {
+  color: #ffffff;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
 .track-map__svg {
   width: 100%;
   height: 100%;
   flex: 1;
   display: block;
   background: #15151e;
-  min-height: 500px;
+  min-height: 420px;
   max-height: 100%;
+}
+
+@media (max-width: 1180px) {
+  .track-map {
+    min-height: 520px;
+    max-height: 760px;
+  }
+}
+
+@media (max-width: 768px) {
+  .track-map {
+    min-height: min(70vh, 620px);
+    aspect-ratio: 4 / 3;
+  }
+
+  .track-map__state,
+  .track-map__svg {
+    min-height: 340px;
+  }
 }
 
 /* Driver dot smooth transitions */
@@ -61,4 +101,14 @@
 
 .track-map__driver-dot:hover circle {
   filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
+}
+
+.track-map__driver-dot:focus {
+  outline: none;
+}
+
+.track-map__driver-dot:focus-visible circle {
+  filter: drop-shadow(0 0 10px #f5a623);
+  stroke: #f5a623;
+  stroke-width: 3px;
 }
