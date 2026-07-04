@@ -4,6 +4,8 @@
 
 The application has completed both the data-reliability hardening pass and the UI/map finishing sprint. Session state, circuit identity, bounded map data, interaction behavior, responsive layouts, and data labels are covered by mocked automated tests and browser smoke checks.
 
+The feature/replay audit on 2026-07-03 established that completed sessions are currently final/latest-known snapshots, not historical replay. Calendar options are current-year and session-level rather than normalized multi-season events. Sector, form, strategy, winner probability, and telemetry surfaces are deterministic estimates; incidents, radio, and weather are demo-only. The audited source-by-source inventory and correction priorities are maintained in `FEATURE_PLAN.md`.
+
 ## Completed checkpoints
 
 1. Validation foundation — `21f21ae`
