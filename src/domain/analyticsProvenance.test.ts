@@ -37,4 +37,14 @@ describe('analytics provenance', () => {
       availability: 'error',
     }))).toEqual({ provenance: 'unavailable', label: 'DATA UNAVAILABLE' });
   });
+
+  it('distinguishes historical replay, replay-derived, and demo-only panels', () => {
+    const replay = createDataQuality('replay');
+    expect(getAnalyticsProvenance('timing', replay).label).toBe('HISTORICAL REPLAY DATA');
+    expect(getAnalyticsProvenance('tires', replay).label).toBe('DERIVED FROM REPLAY DATA');
+    expect(getAnalyticsProvenance('telemetry', replay).label)
+      .toBe('REPLAY ESTIMATE — NOT LIVE TELEMETRY');
+    expect(getAnalyticsProvenance('radio', replay).label)
+      .toBe('DEMO SIMULATION — NOT REPLAY DATA');
+  });
 });

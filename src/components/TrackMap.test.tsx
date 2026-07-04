@@ -226,4 +226,26 @@ describe('TrackMap circuit states', () => {
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
   });
+
+  it('labels historical marker snapshots as replay rather than live', () => {
+    const geometry = Array.from({ length: 30 }, (_, index) => location(index));
+    render(
+      <TrackMap
+        standings={[standing]}
+        session={session({})}
+        currentLap={10}
+        isLoading={false}
+        mapData={mapData({
+          geometry,
+          positions: [location(10)],
+          mode: 'replay',
+          snapshotAt: '2026-06-01T12:00:10Z',
+          quality: createDataQuality('replay'),
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/REPLAY POSITIONS/)).toBeInTheDocument();
+    expect(screen.queryByText(/LIVE POSITIONS/)).not.toBeInTheDocument();
+  });
 });

@@ -29,6 +29,25 @@ export function getAnalyticsProvenance(
   if (source.provenance === 'demo') {
     return { provenance: 'demo', label: 'DEMO SIMULATION' };
   }
+  if (source.provenance === 'replay') {
+    switch (tab) {
+      case 'timing':
+        return { provenance: 'replay', label: 'HISTORICAL REPLAY DATA' };
+      case 'tires':
+      case 'gaps':
+      case 'h2h':
+        return { provenance: 'derived', label: 'DERIVED FROM REPLAY DATA' };
+      case 'sectors':
+      case 'strategy':
+      case 'form':
+      case 'telemetry':
+        return { provenance: 'estimated', label: 'REPLAY ESTIMATE — NOT LIVE TELEMETRY' };
+      case 'incidents':
+      case 'radio':
+      case 'weather':
+        return { provenance: 'demo', label: 'DEMO SIMULATION — NOT REPLAY DATA' };
+    }
+  }
 
   switch (tab) {
     case 'timing':

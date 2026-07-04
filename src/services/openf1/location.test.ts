@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Lap, Location, Session } from '../../types/f1';
 import { createDataQuality } from '../../types/dataQuality';
-import { clearLocationGeometryCache, loadSessionLocationMap } from './location';
+import {
+  clearLocationGeometryCache,
+  loadReplayLocationMap,
+  loadSessionLocationMap,
+} from './location';
 
 function session(status = 'completed'): Session {
   return {
@@ -156,5 +160,39 @@ describe('bounded OpenF1 location loading', () => {
 
     expect(result.mode).toBe('stale');
     expect(result.quality).toMatchObject({ provenance: 'cache', freshness: 'stale' });
+  });
+
+  it('loads replay positions from a bounded window at the replay timestamp', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({ data: geometry, quality: createDataQuality('openf1') })
+      .mockResolvedValueOnce({ data: snapshot, quality: createDataQuality('openf1') })
+      .mockResolvedValueOnce({
+        data: snapshot.map(point => ({ ...point, x: point.x + 300, date: '2026-06-01T14:04:45Z' })),
+        quality: createDataQuality('openf1'),
+      });
+
+    const result = await loadReplayLocationMap(
+      session(),
+      [lap(1, 60, '2026-06-01T13:40:00Z')],
+      '2026-06-01T13:59:45Z',
+      fetcher,
+    );
+
+    expect(result.mode).toBe('replay');
+    expect(result.quality.provenance).toBe('replay');
+    const snapshotUrl = fetcher.mock.calls[1][0] as string;
+    expect(snapshotUrl).toContain('/location?session_key=10&date>=');
+    expect(snapshotUrl).toContain('&date<=');
+
+    const later = await loadReplayLocationMap(
+      session(),
+      [lap(1, 60, '2026-06-01T13:40:00Z')],
+      '2026-06-01T14:04:45Z',
+      fetcher,
+    );
+    expect(later.mode).toBe('replay');
+    expect(fetcher.mock.calls[2][0]).not.toBe(snapshotUrl);
+    expect(fetcher.mock.calls.filter(([url]) => String(url).includes('driver_number=')).length)
+      .toBe(1);
   });
 });

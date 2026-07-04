@@ -158,7 +158,7 @@ const App: React.FC = () => {
         <div className="app-topbar__center">
           {sessionMode === 'replay' ? (
             <>
-              <div className="app-topbar__replay-badge">
+              <div className="app-topbar__replay-badge" title={dataQuality.message}>
                 {getSessionModeLabel(sessionMode)}
               </div>
               <div className="app-topbar__replay-controls" aria-label="Historical replay controls">
@@ -181,6 +181,9 @@ const App: React.FC = () => {
                 </select>
                 <span className="app-topbar__replay-time">
                   {formatReplayElapsed(replay.elapsedMs)}
+                </span>
+                <span className="app-topbar__replay-through">
+                  {currentLap > 0 ? `THROUGH LAP ${currentLap}` : 'RACE START'}
                 </span>
               </div>
             </>

@@ -177,6 +177,14 @@
   font-variant-numeric: tabular-nums;
 }
 
+.app-topbar__replay-through {
+  color: #a99ab8;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
 .app-topbar__lap-counter {
   font-size: 13px;
   font-weight: 700;

@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Driver, Session } from '../types/f1';
+import type { Driver, Position, Session } from '../types/f1';
 import { getOpenF1Data } from '../services/openf1/client';
 import { INITIAL_TRACK_MAP_DATA } from '../types/map';
 import { buildDemoStandings, useF1Data } from './useF1Data';
@@ -11,6 +11,7 @@ vi.mock('../services/openf1/client', () => ({
 
 vi.mock('../services/openf1/location', () => ({
   loadSessionLocationMap: vi.fn().mockResolvedValue(INITIAL_TRACK_MAP_DATA),
+  loadReplayLocationMap: vi.fn().mockResolvedValue(INITIAL_TRACK_MAP_DATA),
 }));
 
 function session(overrides: Partial<Session>): Session {
@@ -56,6 +57,16 @@ function installSessionMock(sessions: Session[], delayedDrivers?: Map<number, Pr
     if (path.startsWith('/drivers?')) {
       return delayedDrivers?.get(key) ?? [driver(key, key === 1 ? 'ESP' : 'MON')];
     }
+    if (path.startsWith('/position?')) {
+      const selectedSession = sessions.find(candidate => candidate.session_key === key);
+      return selectedSession ? [{
+        driver_number: key,
+        position: 1,
+        date: selectedSession.date_start,
+        session_key: key,
+        meeting_key: selectedSession.meeting_key,
+      } satisfies Position] : [];
+    }
     return [];
   });
 }
@@ -78,12 +89,15 @@ describe('demo race data', () => {
 
     const { result } = renderHook(() => useF1Data());
     await waitFor(() => expect(result.current.availableRaces).toHaveLength(1));
+    await waitFor(() => expect(result.current.dataQuality.provenance).toBe('replay'));
 
     const requestedPaths = vi.mocked(getOpenF1Data).mock.calls.map(([path]) => path);
     expect(requestedPaths).toContain('/sessions?year=2024');
     expect(requestedPaths).toContain('/sessions?year=2025');
     expect(requestedPaths).toContain('/meetings?year=2024');
     expect(requestedPaths).toContain('/meetings?year=2025');
+    expect(result.current.sessionMode).toBe('replay');
+    expect(result.current.currentLap).toBe(0);
   });
 
   it('clears previous session data immediately when switching sessions', async () => {
