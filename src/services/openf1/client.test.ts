@@ -121,4 +121,18 @@ describe('OpenF1Client', () => {
       globalThis.fetch = originalFetch;
     }
   });
+
+  it('keeps cache and in-flight identity isolated by session-aware URL', async () => {
+    fetchFn
+      .mockResolvedValueOnce(response([{ session: 1 }]))
+      .mockResolvedValueOnce(response([{ session: 2 }]));
+
+    await client.request('/laps?session_key=1');
+    await client.request('/laps?session_key=2');
+    await client.request('/laps?session_key=1');
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(fetchFn.mock.calls[0][0]).toContain('session_key=1');
+    expect(fetchFn.mock.calls[1][0]).toContain('session_key=2');
+  });
 });

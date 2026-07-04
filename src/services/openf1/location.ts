@@ -13,6 +13,11 @@ import type { OpenF1Result } from './client';
 
 type LocationFetcher = (path: string) => Promise<OpenF1Result<Location[]>>;
 
+const REPLAY_LOCATION_CACHE_POLICY = {
+  ttlMs: 30 * 60 * 1_000,
+  staleMs: 24 * 60 * 60 * 1_000,
+};
+
 interface GeometryCacheEntry {
   geometry: Location[];
   quality: DataQuality;
@@ -207,7 +212,9 @@ export async function loadReplayLocationMap(
   session: Session,
   laps: Lap[],
   replayTimestamp: string,
-  fetcher: LocationFetcher = path => openF1Client.request<Location[]>(path),
+  fetcher: LocationFetcher = path => openF1Client.request<Location[]>(path, {
+    cachePolicy: REPLAY_LOCATION_CACHE_POLICY,
+  }),
 ): Promise<TrackMapData> {
   const replayTime = Date.parse(replayTimestamp);
   if (!Number.isFinite(replayTime)) {

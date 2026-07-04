@@ -45,3 +45,16 @@ export function buildReplayWindowPath(
     + `&date>=${encodeURIComponent(iso(replayTime - lookbackMs))}`
     + `&date<=${encodeURIComponent(iso(replayTime + lookaheadMs))}`;
 }
+
+export function getReplayMapTimestamp(
+  sessionStart: string,
+  replayTimestamp: string,
+  bucketMs = 5 * 60 * 1_000,
+): string | null {
+  const startTime = timestamp(sessionStart);
+  const replayTime = timestamp(replayTimestamp);
+  if (startTime === null || replayTime === null || !Number.isFinite(bucketMs) || bucketMs <= 0) {
+    return null;
+  }
+  return iso(Math.max(startTime, Math.floor(replayTime / bucketMs) * bucketMs));
+}

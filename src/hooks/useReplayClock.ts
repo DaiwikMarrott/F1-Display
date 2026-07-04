@@ -104,18 +104,27 @@ export function useReplayClock(
     [mode, session],
   );
   const [state, setState] = useState<ReplayClockState>(initial);
+  const [isDocumentVisible, setIsDocumentVisible] = useState(
+    () => typeof document === 'undefined' || !document.hidden,
+  );
 
   useEffect(() => {
     setState(initial);
   }, [initial]);
 
   useEffect(() => {
-    if (mode !== 'replay' || !state.isPlaying) return undefined;
+    const handleVisibility = () => setIsDocumentVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'replay' || !state.isPlaying || !isDocumentVisible) return undefined;
     const timer = window.setInterval(() => {
       setState(current => advanceReplayClock(current, TICK_MS));
     }, TICK_MS);
     return () => window.clearInterval(timer);
-  }, [mode, state.isPlaying, state.sessionKey]);
+  }, [isDocumentVisible, mode, state.isPlaying, state.sessionKey]);
 
   const play = useCallback(() => {
     setState(current => current.elapsedMs < current.durationMs

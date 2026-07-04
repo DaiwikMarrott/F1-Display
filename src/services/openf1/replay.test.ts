@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildReplayWindowPath,
+  getReplayMapTimestamp,
   recordsKnownAtReplayTime,
 } from './replay';
 
@@ -30,5 +31,13 @@ describe('bounded replay records', () => {
     expect(path).toContain('&date>=');
     expect(path).toContain('&date<=');
     expect(path).not.toContain('latest');
+  });
+
+  it('coalesces frequent replay ticks into stable request buckets', () => {
+    const start = '2025-05-25T13:00:00Z';
+    expect(getReplayMapTimestamp(start, '2025-05-25T13:01:00Z'))
+      .toBe(getReplayMapTimestamp(start, '2025-05-25T13:04:59Z'));
+    expect(getReplayMapTimestamp(start, '2025-05-25T13:05:00Z'))
+      .not.toBe(getReplayMapTimestamp(start, '2025-05-25T13:04:59Z'));
   });
 });

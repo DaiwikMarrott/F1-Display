@@ -182,6 +182,8 @@ describe('demo race data', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
     expect(result.current.standings).toEqual([]);
     expect(result.current.dataQuality.provenance).toBe('unavailable');
+    expect(vi.mocked(getOpenF1Data).mock.calls.some(([path]) =>
+      path.includes('session_key=3') && !path.startsWith('/sessions'))).toBe(false);
 
     act(() => result.current.setSelectedRaceKey(999));
     await waitFor(() => expect(result.current.isLoading).toBe(false));

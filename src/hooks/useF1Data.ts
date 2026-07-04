@@ -44,6 +44,7 @@ import {
   lapsKnownAtReplayTime,
 } from '../domain/replaySnapshot';
 import type { ReplayDataset } from '../domain/replaySnapshot';
+import { getReplayMapTimestamp } from '../services/openf1/replay';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -346,6 +347,35 @@ export function useF1Data(): F1DataState {
           mode: 'unavailable',
           snapshotAt: null,
         });
+        return;
+      }
+
+      const cachedReplayDataset = replayDataCacheRef.current.get(sk);
+      if (sessionPhase === 'completed' && cachedReplayDataset) {
+        const replayTimestamp = new Date(targetSession.date_start).toISOString();
+        const initialMap = await loadReplayLocationMap(
+          targetSession,
+          cachedReplayDataset.laps,
+          replayTimestamp,
+        );
+        if (!isCurrentRequest()) return;
+        replayMapRef.current = initialMap;
+        const replaySnapshot = buildReplaySnapshot(
+          cachedReplayDataset,
+          replayTimestamp,
+          isRace ? (raceLapCount ?? 0) : 0,
+          initialMap.positions,
+        );
+        setStandings(replaySnapshot.standings);
+        setCurrentLap(replaySnapshot.currentLap);
+        setMapData(initialMap);
+        setAnalyticsLaps(lapsKnownAtReplayTime(cachedReplayDataset.laps, replayTimestamp));
+        setIsLive(false);
+        setError(null);
+        setDataQuality(createDataQuality('replay', {
+          availability: replaySnapshot.standings.length > 0 ? 'ready' : 'partial',
+          message: `Cached historical records through ${replayTimestamp}`,
+        }));
         return;
       }
 
@@ -656,14 +686,9 @@ export function useF1Data(): F1DataState {
     }));
   }, [replay.timestamp, session, sessionMode, totalLaps]);
 
-  const replayMapTimestamp = (() => {
-    if (sessionMode !== 'replay' || !session || !replay.timestamp) return null;
-    const replayTime = Date.parse(replay.timestamp);
-    const startTime = Date.parse(session.date_start);
-    if (!Number.isFinite(replayTime) || !Number.isFinite(startTime)) return null;
-    const bucketMs = 5 * 60 * 1_000;
-    return new Date(Math.max(startTime, Math.floor(replayTime / bucketMs) * bucketMs)).toISOString();
-  })();
+  const replayMapTimestamp = sessionMode === 'replay' && session && replay.timestamp
+    ? getReplayMapTimestamp(session.date_start, replay.timestamp)
+    : null;
 
   // Location snapshots are independently bounded and bucketed so a fast
   // replay clock cannot turn into one network request per rendered tick.

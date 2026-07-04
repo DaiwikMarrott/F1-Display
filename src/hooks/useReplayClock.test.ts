@@ -58,4 +58,18 @@ describe('replay clock', () => {
     expect(result.current.elapsedMs).toBe(0);
     expect(result.current.timestamp).toBe('2024-05-26T13:00:00.000Z');
   });
+
+  it('does not advance replay while the document is hidden', () => {
+    vi.useFakeTimers();
+    const selected = session(1);
+    const { result } = renderHook(() => useReplayClock(selected, 'replay'));
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+    act(() => vi.advanceTimersByTime(2_000));
+    expect(result.current.elapsedMs).toBe(0);
+
+    Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+    act(() => document.dispatchEvent(new Event('visibilitychange')));
+  });
 });
