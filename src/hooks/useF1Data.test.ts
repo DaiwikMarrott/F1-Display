@@ -73,6 +73,19 @@ describe('demo race data', () => {
     expect(buildDemoStandings(21)).not.toEqual(buildDemoStandings(20));
   });
 
+  it('loads the 2024 and 2025 catalogues and de-duplicates repeated session records', async () => {
+    installSessionMock([session({ session_key: 1 })]);
+
+    const { result } = renderHook(() => useF1Data());
+    await waitFor(() => expect(result.current.availableRaces).toHaveLength(1));
+
+    const requestedPaths = vi.mocked(getOpenF1Data).mock.calls.map(([path]) => path);
+    expect(requestedPaths).toContain('/sessions?year=2024');
+    expect(requestedPaths).toContain('/sessions?year=2025');
+    expect(requestedPaths).toContain('/meetings?year=2024');
+    expect(requestedPaths).toContain('/meetings?year=2025');
+  });
+
   it('clears previous session data immediately when switching sessions', async () => {
     const sessions = [
       session({ session_key: 1 }),

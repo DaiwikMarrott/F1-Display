@@ -20,10 +20,13 @@ import WeatherPanel from './components/WeatherPanel';
 import { getDataQualityLabel } from './types/dataQuality';
 import {
   getSessionDisplayLabel,
-  getSessionOptions,
   isRaceSession,
   normalizeSessionType,
 } from './domain/sessionSelection';
+import {
+  buildSessionCatalogue,
+  getCatalogueSessionLabel,
+} from './domain/sessionCatalogue';
 import { getAnalyticsProvenance } from './domain/analyticsProvenance';
 import './App.css';
 
@@ -56,7 +59,7 @@ const App: React.FC = () => {
   const raceSelectorRef = useRef<HTMLDivElement>(null);
 
   const raceName = session
-    ? `${session.country_name} — ${session.circuit_short_name}`
+    ? `${session.year ?? new Date(session.date_start).getUTCFullYear()} ${session.meeting_name || session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
   const sessionType = session
@@ -67,7 +70,14 @@ const App: React.FC = () => {
     ? `${normalizeSessionType(session).toUpperCase()} ${raceSession && standings.length > 0 ? 'STANDINGS' : 'ORDER'}`
     : 'SESSION ORDER';
 
-  const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
+  const sessionCatalogue = useMemo(
+    () => buildSessionCatalogue(availableRaces),
+    [availableRaces],
+  );
+  const sessionOptionCount = sessionCatalogue.reduce(
+    (count, event) => count + event.sessions.length,
+    0,
+  );
   const analyticsProvenance = getAnalyticsProvenance(analyticsPanelTab, dataQuality);
 
   const handleRaceSelect = (sessionKey: number | null) => {
@@ -166,13 +176,13 @@ const App: React.FC = () => {
             <button
               className="app-topbar__race-btn"
               onClick={() => setShowRaceSelector(!showRaceSelector)}
-              title={`${sessionOptions.length} sessions available`}
+              title={`${sessionOptionCount} sessions across ${sessionCatalogue.length} events`}
               aria-label="Select session"
               aria-expanded={showRaceSelector}
               aria-haspopup="true"
               aria-controls="session-selector-dropdown"
             >
-              🏁 SESSIONS ({sessionOptions.length})
+              🏁 EVENTS ({sessionCatalogue.length})
             </button>
             {showRaceSelector && (
               <div
@@ -186,20 +196,38 @@ const App: React.FC = () => {
                   📍 Latest Race
                 </button>
                 <div className="app-topbar__race-divider" />
-                {sessionOptions.length > 0 ? (
-                  sessionOptions.map(race => (
-                    <button
-                      key={race.session_key}
-                      className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
-                        }`}
-                      onClick={() => handleRaceSelect(race.session_key)}
-                      title={new Date(race.date_start).toLocaleDateString()}
+                {sessionCatalogue.length > 0 ? (
+                  sessionCatalogue.map(event => (
+                    <div
+                      className="app-topbar__event-group"
+                      key={event.id}
+                      role="group"
+                      aria-label={`${event.year} ${event.eventName}`}
                     >
-                      <span className="race-flag">🏁</span>
-                      <span className="race-name">{race.country_name}</span>
-                      <span className="race-circuit">{race.circuit_short_name}</span>
-                      <span className="race-session">{getSessionDisplayLabel(race)}</span>
-                    </button>
+                      <div className="app-topbar__event-header">
+                        <span className="event-year">{event.year}</span>
+                        <span className="event-name">{event.eventName}</span>
+                        <span className="event-circuit">
+                          {event.countryName} · {event.circuitShortName}
+                        </span>
+                      </div>
+                      {event.sessions.map(race => (
+                        <button
+                          key={race.session_key}
+                          className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
+                            }`}
+                          onClick={() => handleRaceSelect(race.session_key)}
+                          title={new Date(race.date_start).toLocaleString()}
+                          aria-label={getCatalogueSessionLabel(race)}
+                        >
+                          <span className="race-flag">🏁</span>
+                          <span className="race-session">{getSessionDisplayLabel(race)}</span>
+                          <span className="race-date">
+                            {new Date(race.date_start).toLocaleDateString()}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   ))
                 ) : (
                   <div className="app-topbar__no-races">

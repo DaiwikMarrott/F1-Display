@@ -119,8 +119,13 @@ describe('App critical UI flows', () => {
 
     await user.click(screen.getByRole('button', { name: 'Select session' }));
 
-    expect(screen.getByRole('button', { name: /Spain Catalunya Race/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Spain Catalunya Practice 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '2026 Spain Grand Prix' })).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: '2026 · Spain · Catalunya · Spain Grand Prix · Race',
+    })).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: '2026 · Spain · Catalunya · Spain Grand Prix · Practice 1',
+    })).toBeInTheDocument();
   });
 
   it('closes the session selector with Escape or an outside click', async () => {

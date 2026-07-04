@@ -8,6 +8,7 @@ const MINUTE = 60 * SECOND;
 
 const POLICIES: Array<[RegExp, CachePolicy]> = [
   [/\/sessions(?:\?|$)/, { ttlMs: 15 * MINUTE, staleMs: 6 * 60 * MINUTE }],
+  [/\/meetings(?:\?|$)/, { ttlMs: 60 * MINUTE, staleMs: 24 * 60 * MINUTE }],
   [/\/drivers(?:\?|$)/, { ttlMs: 60 * MINUTE, staleMs: 24 * 60 * MINUTE }],
   [/\/location(?:\?|$)/, { ttlMs: 5 * SECOND, staleMs: 30 * SECOND }],
   [/\/position(?:\?|$)/, { ttlMs: 3 * SECOND, staleMs: 30 * SECOND }],

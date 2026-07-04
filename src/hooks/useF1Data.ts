@@ -8,6 +8,7 @@ import type {
   Session,
   DriverStanding,
   PitNotification,
+  Meeting,
 } from '../types/f1';
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
@@ -28,6 +29,10 @@ import {
   plausiblePitDuration,
   shouldEmitPitNotifications,
 } from '../domain/pitNotifications';
+import {
+  enrichSessionsWithMeetings,
+  normalizeSessionRecords,
+} from '../domain/sessionCatalogue';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -199,25 +204,40 @@ export function useF1Data(): F1DataState {
     const isCurrentRequest = () => requestGeneration === requestGenerationRef.current;
 
     try {
-      // 1. Fetch or use cached races for the current year
+      // 1. Fetch or use the normalized multi-season session catalogue.
       let sessionsResp: Session[] = [];
       if (sessionListCacheRef.current) {
         sessionsResp = sessionListCacheRef.current;
       } else {
         try {
           const currentYear = new Date().getFullYear();
-          sessionsResp = await getOpenF1Data<Session[]>(`/sessions?year=${currentYear}`);
+          const catalogueYears = [...new Set([currentYear, 2025, 2024])];
+          const [sessionBatches, meetingBatches] = await Promise.all([
+            Promise.allSettled(
+              catalogueYears.map(year => getOpenF1Data<Session[]>(`/sessions?year=${year}`)),
+            ),
+            Promise.allSettled(
+              catalogueYears.map(year => getOpenF1Data<Meeting[]>(`/meetings?year=${year}`)),
+            ),
+          ]);
           if (!isCurrentRequest()) return;
+          const sessionRows = sessionBatches.flatMap(fulfilledArray);
+          const meetingRows = meetingBatches.flatMap(fulfilledArray);
+          if (sessionRows.length === 0 && sessionBatches.every(result => result.status === 'rejected')) {
+            throw new Error('OpenF1 session catalogue is unavailable');
+          }
+          sessionsResp = enrichSessionsWithMeetings(sessionRows, meetingRows);
           if (sessionsResp.length > 0) {
             sessionListCacheRef.current = sessionsResp;
           }
         } catch (e) {
           console.warn('Failed to fetch sessions, injecting fallback DEMO races:', e);
           sessionsResp = [
-            { session_key: 9158, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
-            { session_key: 9166, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
-            { session_key: 9173, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
+            { session_key: 9158, meeting_name: 'Bahrain Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
+            { session_key: 9166, meeting_name: 'Saudi Arabian Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
+            { session_key: 9173, meeting_name: 'Australian Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
           ];
+          sessionsResp = normalizeSessionRecords(sessionsResp);
           sessionListCacheRef.current = sessionsResp;
         }
       }
