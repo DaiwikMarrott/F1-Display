@@ -4,53 +4,44 @@ This file records the current implementation rather than an accuracy or product-
 
 ## Audited implementation matrix
 
-Audit date: 2026-07-03. “Implemented” means the current code path exists; it does not imply official accuracy. Replay status describes the baseline before the historical replay checkpoints in `complete_feature_replay_analytics`.
+Audit date: 2026-07-04. “Implemented” means the current code path exists; it does not imply official accuracy.
 
 | Feature | Current status | Source classification | Replay status and limitations |
 | --- | --- | --- | --- |
-| Session catalogue and selector | Partial | OpenF1 / demo fallback | Fetches only the runtime’s current year and exposes every session as a flat option. Session keys are de-duplicated, but weekends are not normalized or grouped by season/event and official meeting names are not retained. |
-| Timing tower | Partial | OpenF1 / cached | Uses latest position, lap, stint, and pit records. OpenF1 gap/interval data is not integrated. Completed sessions show final/latest records rather than state at a historical timestamp. |
-| Live/replay standings | Partial | OpenF1 / cached | Live/latest order is implemented and session switching is isolated. Historical replay standings do not yet exist. |
-| Track map and driver locations | Partial | OpenF1 / cached / estimated | Uses a bounded reference lap and synchronized snapshot. Completed sessions are latest-known only; deterministic path placement is explicitly estimated. No progressive historical replay exists yet. |
-| Tire age and current stint | Implemented with limitations | OpenF1-derived | Derived from latest lap and stint records with non-negative guards. Completed sessions currently expose final stint state rather than replay-time state. |
+| Session catalogue and selector | Implemented | OpenF1 / demo fallback | Loads current year, 2025, and 2024 sessions plus meetings; de-duplicates records and groups distinct sessions beneath season/event weekends. |
+| Timing tower | Implemented with limitations | OpenF1 / replay / cached | Uses records known at live/replay time. Official interval/gap data is not integrated, so unsupported gaps remain unavailable. |
+| Live/replay standings | Implemented | OpenF1 / historical replay | Completed sessions start from race time zero and advance position/lap/stint/pit state by timestamp rather than exposing final results immediately. |
+| Track map and driver locations | Implemented with limitations | OpenF1 / replay / cached / estimated | Uses bounded lap geometry and narrow synchronized snapshots. Replay positions update in five-minute timeline buckets; sparse/collapsed data is estimated or unavailable. |
+| Tire age and current stint | Implemented | OpenF1-derived / replay-derived | Derived from the stint and lap known at the current live/replay timestamp with non-negative guards. |
 | Tire degradation | Estimated | Deterministic estimate | Uses compound lifespan and tire age, not measured lap-by-lap degradation. No benchmark or official accuracy claim. |
 | Tire and pit strategy | Estimated | Deterministic estimate | Pit window, pit loss, fuel, finish, risk, and scenarios are heuristics. Actual stint/pit history is displayed indirectly but does not yet drive replay-time recommendations. |
-| Sector analysis | Misleadingly broad; estimated | Deterministic estimate | Splits one valid lap time into synthetic 33/40/27 sectors even though lap records can contain real sector durations. Must use real sector records when available or remain explicitly estimated/unavailable. |
+| Sector analysis | Implemented when data exists | OpenF1 / historical replay | Uses actual OpenF1 sector durations from valid completed laps; unavailable when sector records are absent. |
 | Gap and overtake analysis | Mostly unavailable for OpenF1 sessions | Derived / unavailable | The app correctly avoids fabricating gap-to-leader from position order. The heuristic model only runs when a valid numeric gap exists, which is generally demo data because `/intervals` is not integrated. |
-| Winner probability | Estimated | Deterministic heuristic | Race-only display is enforced. It uses current position, gap when available, and laps remaining; completed sessions currently use final state and are not replay-aware. |
-| Form and momentum | Estimated | Deterministic estimate | Builds five synthetic samples around one valid lap value. It rejects zero/invalid laps but does not yet use the driver’s actual recent lap sequence. |
-| Telemetry | Demo-quality estimate | Deterministic estimate | Generates plausible speed, acceleration, and G-load values from driver identity/position. It does not consume OpenF1 `car_data` and must not be described as telemetry measurement. |
+| Winner probability | Estimated | Deterministic heuristic | Race-only and replay-aware; uses only current replay/live position and laps remaining. No external accuracy benchmark is claimed. |
+| Form and momentum | Implemented when data exists | OpenF1-derived / replay-derived | Uses up to five valid recent completed lap records; zero and pit-out laps are excluded. |
+| Telemetry | Unavailable/deferred | Unavailable | Synthetic telemetry measurements were removed. The panel remains unavailable until bounded OpenF1 `car_data` is integrated. |
 | Incident tracker | Demo-only | Deterministic demo simulation | Generates seeded events from standing patterns. OpenF1 race-control records are not integrated. |
 | Team radio | Demo-only | Deterministic demo simulation | Displays generated transcript-style content; no official OpenF1 radio feed is consumed. |
 | Weather | Demo-only | Deterministic demo simulation | Displays generated conditions; no official OpenF1 weather feed is consumed. |
-| Head-to-head and driver comparison | Partial | Mixed OpenF1 / derived / estimated | Current-session comparison works and recent final positions come from OpenF1. Recent-race de-duplication is not season-aware, while telemetry/form/strategy comparison fields inherit their estimated status. |
-| Pit notifications and position changes | Partial | OpenF1-derived | Live pit notifications and local position-change animations exist. Historical replay-time event emission does not yet exist. |
-| Data provenance labels | Implemented with gaps | OpenF1 / cached / derived / estimated / demo / unavailable | Major panels are labeled, but there is no first-class historical replay provenance or centralized session mode yet. |
+| Head-to-head and driver comparison | Implemented with limitations | Mixed OpenF1 / replay / derived / estimated | Current-session comparison and recent results work with season-aware event identity. Missing telemetry renders unavailable. |
+| Pit notifications and position changes | Partial | OpenF1-derived / replay-derived | Live notifications exist; replay pit counts advance historically, but replay does not emit transient historical pit popups. |
+| Data provenance labels | Implemented | Live / replay / latest-known / cached / stale / derived / estimated / demo / unavailable | Timing, map, analytics, and demo-only feeds are distinguished explicitly. |
 
 ## Data and endpoint inventory
 
 | OpenF1 resource | Current use | Audit result |
 | --- | --- | --- |
-| `sessions` | Current-year flat selector and latest-race selection | Real data, cached and rate-limit aware; needs multi-season normalization and event identity. |
+| `sessions` / `meetings` | Multi-season grouped catalogue and latest-race selection | Real data, event/season normalized, cached, and rate-limit aware. |
 | `drivers` | Standing identity and teams | Real data. |
-| `position` | Latest/final order and H2H finishing positions | Real data; full-session reads are used and historical filtering is not yet centralized. |
-| `laps` | Latest/best lap, current lap, map reference lap | Real data; contains sector fields that analytics currently discard. |
-| `stints` | Current/final compound and tire age | Real data; needs replay-time filtering. |
-| `pit` | Pit counts and live notifications | Real data; needs replay-time filtering. |
-| `location` | Bounded geometry and synchronized latest marker snapshot | Real data when valid; no replay timestamp input yet. |
+| `position` | Live order, replay-time order, H2H finishes | Real data filtered centrally by replay timestamp. |
+| `laps` | Latest/best/current lap, sectors, form, replay state, map geometry | Real data; only completed laps are visible in replay. |
+| `stints` | Current compound and tire age | Real data filtered by current/replay lap. |
+| `pit` | Live notifications and replay-time pit counts | Real data filtered by date/lap. |
+| `location` | Live/latest and replay marker snapshots | Real bounded data with per-session geometry and replay bucket caching. |
 | `intervals` | Not used | Deferred until added through bounded replay/live access. Gap analytics must remain unavailable without it. |
-| `car_data` | Not used | Telemetry remains an estimate until bounded car data is integrated. |
+| `car_data` | Not used | Telemetry remains unavailable until bounded car data is integrated. |
 | `race_control` | Not used | Incidents remain demo-only until bounded records are integrated. |
 | weather/radio | Not used | Panels remain demo-only; no official feed is claimed. |
-
-## Required correction priorities
-
-1. Normalize a 2024/2025 season and event catalogue without duplicate weekends or collapsed multi-race countries.
-2. Enforce canonical circuit identity for every supported 2024/2025 event.
-3. Add an explicit live/replay/completed-static/upcoming/unavailable/demo session mode and deterministic replay clock.
-4. Filter positions, laps, stints, pits, and locations to records known at the replay timestamp.
-5. Replace synthetic sector/form/telemetry behavior with real bounded records where practical; otherwise keep it explicitly estimated or unavailable.
-6. Add replay-aware provenance and request budgets before claiming historical replay support.
 
 ## Correctness rules
 
@@ -86,17 +77,21 @@ The maintained suite covers:
 - bounded location URLs, geometry caching, synchronized snapshots, collapsed coordinates, partial markers, and freshness labels
 - tooltip clamping/reset, keyboard marker details, Escape/outside-click selector behavior
 - race, non-race, upcoming, and impossible-string UI semantics
+- 2024/2025 event de-duplication and cross-season circuit identity
+- replay mode, deterministic clock, reset, speed, hidden-tab pause, and time cutoffs
+- replay standings/laps/stints/pits, bounded replay map windows, and request buckets
+- real sector/form inputs and truthful telemetry unavailability
 
 ## Future work
 
 Potential future additions should prioritize authoritative inputs over visual breadth:
 
-1. Full historical location replay and scrubbing.
-2. Official interval/gap ingestion when a dependable endpoint is available.
+1. Official interval/gap ingestion when a dependable endpoint is available.
+2. Bounded OpenF1 `car_data` telemetry.
 3. Official race-control incident feed.
-4. Official weather, radio, and car-data telemetry.
-5. Persistent server-side caching and observability.
-6. Measured prediction evaluation against historical datasets.
-7. Expanded circuit metadata sourced from a maintained schedule dataset.
+4. Official weather and radio feeds.
+5. Frame-level replay interpolation or manual timeline scrubbing.
+6. Persistent server-side caching and observability.
+7. Measured prediction evaluation against historical datasets.
 
 No prediction accuracy, frame-rate, latency, or engagement target is considered achieved unless it is measured by tests or data stored in this repository.

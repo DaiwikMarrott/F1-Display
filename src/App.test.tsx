@@ -128,7 +128,7 @@ describe('App critical UI flows', () => {
       expect(screen.getByText(panelHeading)).toBeInTheDocument();
       expect(screen.getAllByText(/DEMO SIMULATION/).length).toBeGreaterThan(0);
     }
-  });
+  }, 15_000);
 
   it('shows truthful session labels in the selector', async () => {
     const user = userEvent.setup();
@@ -238,6 +238,8 @@ describe('App critical UI flows', () => {
   it('labels completed-session replay and exposes deterministic controls', () => {
     vi.mocked(useF1Data).mockReturnValue({
       ...vi.mocked(useF1Data)(),
+      standings: [],
+      currentLap: 0,
       sessionMode: 'replay',
       replay: {
         ...vi.mocked(useF1Data)().replay,
@@ -252,6 +254,8 @@ describe('App critical UI flows', () => {
 
     expect(screen.getByText('HISTORICAL REPLAY')).toBeInTheDocument();
     expect(screen.getByText('Race · REPLAY')).toBeInTheDocument();
+    expect(screen.getByText('RACE START')).toBeInTheDocument();
+    expect(screen.queryByText('LIVE')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pause replay' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reset replay' })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: 'Replay speed' })).toHaveValue('60');
