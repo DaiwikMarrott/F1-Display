@@ -36,12 +36,14 @@ export function getAnalyticsProvenance(
       case 'tires':
       case 'gaps':
       case 'h2h':
+      case 'form':
         return { provenance: 'derived', label: 'DERIVED FROM REPLAY DATA' };
       case 'sectors':
+        return { provenance: 'replay', label: 'HISTORICAL REPLAY LAP DATA' };
       case 'strategy':
-      case 'form':
-      case 'telemetry':
         return { provenance: 'estimated', label: 'REPLAY ESTIMATE — NOT LIVE TELEMETRY' };
+      case 'telemetry':
+        return { provenance: 'unavailable', label: 'TELEMETRY UNAVAILABLE — CAR DATA NOT LOADED' };
       case 'incidents':
       case 'radio':
       case 'weather':
@@ -64,10 +66,13 @@ export function getAnalyticsProvenance(
     case 'h2h':
       return { provenance: 'derived', label: 'DERIVED FROM AVAILABLE DATA' };
     case 'sectors':
-    case 'strategy':
+      return { provenance: source.provenance, label: 'OPENF1 LAP SECTOR DATA' };
     case 'form':
-    case 'telemetry':
+      return { provenance: 'derived', label: 'DERIVED FROM VALID LAP RECORDS' };
+    case 'strategy':
       return { provenance: 'estimated', label: 'ESTIMATED — NOT LIVE TELEMETRY' };
+    case 'telemetry':
+      return { provenance: 'unavailable', label: 'TELEMETRY UNAVAILABLE — CAR DATA NOT LOADED' };
     case 'incidents':
     case 'radio':
     case 'weather':

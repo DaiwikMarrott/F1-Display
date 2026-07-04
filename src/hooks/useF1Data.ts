@@ -41,6 +41,7 @@ import { getSessionMode } from '../domain/sessionMode';
 import { useReplayClock } from './useReplayClock';
 import {
   buildReplaySnapshot,
+  lapsKnownAtReplayTime,
 } from '../domain/replaySnapshot';
 import type { ReplayDataset } from '../domain/replaySnapshot';
 
@@ -156,6 +157,7 @@ export interface F1DataState {
   mapData: TrackMapData;
   sessionMode: SessionMode;
   replay: ReplayController;
+  analyticsLaps: Lap[];
 }
 
 export function useF1Data(): F1DataState {
@@ -171,6 +173,7 @@ export function useF1Data(): F1DataState {
   const [selectedRaceKey, setSelectedRaceKeyState] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
   const [mapData, setMapData] = useState<TrackMapData>(INITIAL_TRACK_MAP_DATA);
+  const [analyticsLaps, setAnalyticsLaps] = useState<Lap[]>([]);
   const sessionMode = getSessionMode(session, dataQuality);
   const replay = useReplayClock(session, sessionMode);
   const replayTimestampRef = useRef<string | null>(replay.timestamp);
@@ -207,6 +210,7 @@ export function useF1Data(): F1DataState {
     setError(null);
     setDataQuality(INITIAL_DATA_QUALITY);
     setMapData(INITIAL_TRACK_MAP_DATA);
+    setAnalyticsLaps([]);
     replayMapRef.current = INITIAL_TRACK_MAP_DATA;
     prevPitDataRef.current = new Map();
     prevPitSessionKeyRef.current = null;
@@ -427,6 +431,7 @@ export function useF1Data(): F1DataState {
         setStandings(replaySnapshot.standings);
         setCurrentLap(replaySnapshot.currentLap);
         setMapData(initialMap);
+        setAnalyticsLaps(lapsKnownAtReplayTime(lapsData, replayTimestamp));
         setIsLive(false);
         setError(null);
         setDataQuality(createDataQuality('replay', {
@@ -567,6 +572,7 @@ export function useF1Data(): F1DataState {
       const finalStandings = applyWinProbabilities(newStandings, lapsRemaining);
 
       setStandings(finalStandings);
+      setAnalyticsLaps(lapsData);
       setMapData(nextMapData);
       setIsLive(isLiveSession);
       setError(null);
@@ -642,6 +648,7 @@ export function useF1Data(): F1DataState {
     );
     setStandings(snapshot.standings);
     setCurrentLap(snapshot.currentLap);
+    setAnalyticsLaps(lapsKnownAtReplayTime(dataset.laps, replay.timestamp));
     setPitNotifications([]);
     setDataQuality(createDataQuality('replay', {
       availability: snapshot.standings.length > 0 ? 'ready' : 'partial',
@@ -741,5 +748,6 @@ export function useF1Data(): F1DataState {
     mapData,
     sessionMode,
     replay,
+    analyticsLaps,
   };
 }

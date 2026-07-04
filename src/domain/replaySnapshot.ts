@@ -24,7 +24,7 @@ export interface ReplaySnapshot {
   recordsThrough: string;
 }
 
-function completedLapsAtTime(laps: Lap[], replayTimestamp: string): Lap[] {
+export function lapsKnownAtReplayTime(laps: Lap[], replayTimestamp: string): Lap[] {
   const replayTime = Date.parse(replayTimestamp);
   if (!Number.isFinite(replayTime)) return [];
   return laps.filter(lap => {
@@ -57,7 +57,7 @@ export function buildReplaySnapshot(
   locations: Location[] = [],
 ): ReplaySnapshot {
   const positions = recordsKnownAtReplayTime(dataset.positions, replayTimestamp);
-  const laps = completedLapsAtTime(dataset.laps, replayTimestamp);
+  const laps = lapsKnownAtReplayTime(dataset.laps, replayTimestamp);
   const pits = recordsKnownAtReplayTime(dataset.pits, replayTimestamp);
 
   const latestPosition = new Map<number, Position>();

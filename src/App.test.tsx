@@ -100,6 +100,7 @@ describe('App critical UI flows', () => {
         reset: vi.fn(),
         setSpeed: vi.fn(),
       },
+      analyticsLaps: [],
     });
     vi.mocked(useAnalytics).mockReturnValue(analytics);
   });

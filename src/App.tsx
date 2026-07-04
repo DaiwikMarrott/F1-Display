@@ -52,10 +52,11 @@ const App: React.FC = () => {
     mapData,
     sessionMode,
     replay,
+    analyticsLaps,
   } = useF1Data();
 
   // Analytics engine
-  const analytics = useAnalytics(standings, currentLap, totalLaps);
+  const analytics = useAnalytics(standings, currentLap, totalLaps, analyticsLaps);
   const incidents = useIncidentDetection(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);

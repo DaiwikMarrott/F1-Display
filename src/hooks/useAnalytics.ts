@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import type { DriverStanding } from '../types/f1';
+import type { DriverStanding, Lap } from '../types/f1';
 import type { 
   TireAnalysis, 
   SectorData, 
   GapTrend, 
   StrategyRecommendation,
   DriverForm,
-  TelemetryData,
   AnalyticsState
 } from '../types/analytics';
 import { clampPercent, positiveOrNull, safeTireAge } from '../utils/formatters';
@@ -64,31 +63,30 @@ function calculateTireAnalysis(
  */
 function calculateSectorData(
   standing: DriverStanding,
-  leaderLapTime: number
+  laps: Lap[],
+  sessionBest: [number, number, number],
 ): SectorData | null {
-  // Sector distribution in typical lap: S1=33%, S2=40%, S3=27%
-  const totalTime = positiveOrNull(standing.lastLap) ?? positiveOrNull(standing.bestLap);
-  if (totalTime === null) return null;
-  const sector1 = totalTime * 0.33;
-  const sector2 = totalTime * 0.40;
-  const sector3 = totalTime * 0.27;
-  
-  // Add realistic variation per sector
-  const seed = [standing.driver.driver_number, totalTime];
-  const s1 = sector1 * deterministicRange(0.98, 1.02, ...seed, 's1');
-  const s2 = sector2 * deterministicRange(0.98, 1.02, ...seed, 's2');
-  const s3 = sector3 * deterministicRange(0.98, 1.02, ...seed, 's3');
-  
-  // Best sectors are usually 5-8 tenths better
-  const bestS1 = s1 * 0.94;
-  const bestS2 = s2 * 0.94;
-  const bestS3 = s3 * 0.94;
-  
-  // Delta to leader's sectors
-  const leaderS1 = leaderLapTime * 0.33;
-  const leaderS2 = leaderLapTime * 0.40;
-  const leaderS3 = leaderLapTime * 0.27;
-  
+  const valid = laps
+    .filter(lap =>
+      positiveOrNull(lap.duration_sector_1) !== null
+      && positiveOrNull(lap.duration_sector_2) !== null
+      && positiveOrNull(lap.duration_sector_3) !== null)
+    .sort((a, b) => a.lap_number - b.lap_number);
+  const latest = valid[valid.length - 1];
+  if (
+    !latest
+    || latest.duration_sector_1 === null
+    || latest.duration_sector_2 === null
+    || latest.duration_sector_3 === null
+  ) return null;
+  const s1 = latest.duration_sector_1;
+  const s2 = latest.duration_sector_2;
+  const s3 = latest.duration_sector_3;
+  const totalTime = s1 + s2 + s3;
+  const bestS1 = Math.min(...valid.map(lap => lap.duration_sector_1!));
+  const bestS2 = Math.min(...valid.map(lap => lap.duration_sector_2!));
+  const bestS3 = Math.min(...valid.map(lap => lap.duration_sector_3!));
+  const [leaderS1, leaderS2, leaderS3] = sessionBest;
   const s1Delta = s1 - leaderS1;
   const s2Delta = s2 - leaderS2;
   const s3Delta = s3 - leaderS3;
@@ -284,29 +282,30 @@ function calculateStrategyRecommendation(
  * Calculate driver form and momentum
  */
 function calculateDriverForm(
-  standing: DriverStanding
+  standing: DriverStanding,
+  laps: Lap[],
 ): DriverForm | null {
-  // Simulate last 5 lap times with degradation trend
-  const last5Laps: number[] = [];
-  const baseLap = positiveOrNull(standing.bestLap) ?? positiveOrNull(standing.lastLap);
-  if (baseLap === null) return null;
-  for (let i = -4; i <= 0; i++) {
-    const degradation = Math.abs(i) * 0.15
-      * deterministicUnit(standing.driver.driver_number, standing.tireAge, i, 'form');
-    last5Laps.push(baseLap + degradation);
-  }
+  const last5Laps = laps
+    .filter(lap => positiveOrNull(lap.lap_duration) !== null && !lap.is_pit_out_lap)
+    .sort((a, b) => a.lap_number - b.lap_number)
+    .slice(-5)
+    .map(lap => lap.lap_duration!);
+  if (last5Laps.length < 2) return null;
   
-  const averageLast5 = last5Laps.reduce((a, b) => a + b) / 5;
+  const averageLast5 = last5Laps.reduce((a, b) => a + b) / last5Laps.length;
   
   // Trend analysis
   let trend: 'improving' | 'stable' | 'declining' = 'stable';
-  const first2Avg = (last5Laps[0] + last5Laps[1]) / 2;
-  const last2Avg = (last5Laps[3] + last5Laps[4]) / 2;
+  const first2Avg = (last5Laps[0] + last5Laps[Math.min(1, last5Laps.length - 1)]) / 2;
+  const last2Avg = (last5Laps[Math.max(0, last5Laps.length - 2)] + last5Laps[last5Laps.length - 1]) / 2;
   if (last2Avg < first2Avg - 0.1) trend = 'improving';
   else if (last2Avg > first2Avg + 0.1) trend = 'declining';
   
   // Consistency: variance between laps (lower = more consistent)
-  const variance = Math.sqrt(last5Laps.reduce((sq, lap) => sq + Math.pow(lap - averageLast5, 2), 0) / 5);
+  const variance = Math.sqrt(
+    last5Laps.reduce((sq, lap) => sq + Math.pow(lap - averageLast5, 2), 0)
+    / last5Laps.length,
+  );
   const consistency = Math.max(0, 100 - variance * 100);
   
   // Momentum score
@@ -329,44 +328,37 @@ function calculateDriverForm(
 }
 
 /**
- * Calculate telemetry data
- */
-function calculateTelemetryData(
-  standing: DriverStanding
-): TelemetryData {
-  // Simulate realistic telemetry
-  const baseSpeed = 300 + standing.position * 2; // faster drivers slightly faster
-  const topSpeed = baseSpeed + deterministicRange(-10, 10, standing.driver.driver_number, 'top-speed');
-  const avgSpeed = topSpeed * 0.92;
-  
-  return {
-    driver_number: standing.driver.driver_number,
-    topSpeed: Math.round(topSpeed),
-    avgSpeed: Math.round(avgSpeed),
-    brakingZones: [], // Would need detailed track data
-    acceleration: deterministicRange(75, 100, standing.driver.driver_number, 'acceleration'),
-    cornerSpeed: avgSpeed * 0.75,
-    gForce: deterministicRange(3.5, 5, standing.driver.driver_number, 'g-force'),
-    maxGForce: deterministicRange(4.5, 6, standing.driver.driver_number, 'max-g-force'),
-  };
-}
-
-/**
  * Main analytics hook - calculates all analytics data
  */
 export function calculateAnalytics(
   standings: DriverStanding[],
   currentLap: number,
-  totalLaps: number
+  totalLaps: number,
+  laps: Lap[] = [],
 ): AnalyticsState {
   const tireAnalysis = new Map<number, TireAnalysis>();
   const sectors = new Map<number, SectorData>();
   const gapTrends = new Map<number, GapTrend>();
   const strategies = new Map<number, StrategyRecommendation>();
   const formData = new Map<number, DriverForm>();
-  const telemetry = new Map<number, TelemetryData>();
-    
-  const leaderLapTime = positiveOrNull(standings[0]?.bestLap) ?? 0;
+  const telemetry: AnalyticsState['telemetry'] = new Map();
+  const lapsByDriver = new Map<number, Lap[]>();
+  for (const lap of laps) {
+    const rows = lapsByDriver.get(lap.driver_number) ?? [];
+    rows.push(lap);
+    lapsByDriver.set(lap.driver_number, rows);
+  }
+  const validSectors = laps.filter(lap =>
+    positiveOrNull(lap.duration_sector_1) !== null
+    && positiveOrNull(lap.duration_sector_2) !== null
+    && positiveOrNull(lap.duration_sector_3) !== null);
+  const sessionBest: [number, number, number] = validSectors.length > 0
+    ? [
+      Math.min(...validSectors.map(lap => lap.duration_sector_1!)),
+      Math.min(...validSectors.map(lap => lap.duration_sector_2!)),
+      Math.min(...validSectors.map(lap => lap.duration_sector_3!)),
+    ]
+    : [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
     
   standings.forEach(standing => {
     const driverNum = standing.driver.driver_number;
@@ -376,7 +368,8 @@ export function calculateAnalytics(
       tireAnalysis.set(driverNum, tire);
     }
 
-    const sector = calculateSectorData(standing, leaderLapTime);
+    const driverLaps = lapsByDriver.get(driverNum) ?? [];
+    const sector = calculateSectorData(standing, driverLaps, sessionBest);
     if (sector) sectors.set(driverNum, sector);
 
     const gap = calculateGapTrend(standing);
@@ -386,10 +379,8 @@ export function calculateAnalytics(
       strategies.set(driverNum, calculateStrategyRecommendation(standing, currentLap, totalLaps, tire));
     }
 
-    const form = calculateDriverForm(standing);
+    const form = calculateDriverForm(standing, driverLaps);
     if (form) formData.set(driverNum, form);
-
-    telemetry.set(driverNum, calculateTelemetryData(standing));
   });
     
   return {
@@ -407,11 +398,12 @@ export function calculateAnalytics(
 export function useAnalytics(
   standings: DriverStanding[],
   currentLap: number,
-  totalLaps: number
+  totalLaps: number,
+  laps: Lap[] = [],
 ): AnalyticsState {
   return useMemo(
-    () => calculateAnalytics(standings, currentLap, totalLaps),
-    [standings, currentLap, totalLaps],
+    () => calculateAnalytics(standings, currentLap, totalLaps, laps),
+    [standings, currentLap, totalLaps, laps],
   );
 }
 
