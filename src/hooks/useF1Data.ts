@@ -14,6 +14,7 @@ import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
 import type { TrackMapData } from '../types/map';
 import { INITIAL_TRACK_MAP_DATA } from '../types/map';
+import type { ReplayController, SessionMode } from '../types/replay';
 import { getOpenF1Data } from '../services/openf1/client';
 import { loadSessionLocationMap } from '../services/openf1/location';
 import {
@@ -33,6 +34,8 @@ import {
   enrichSessionsWithMeetings,
   normalizeSessionRecords,
 } from '../domain/sessionCatalogue';
+import { getSessionMode } from '../domain/sessionMode';
+import { useReplayClock } from './useReplayClock';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -144,6 +147,8 @@ export interface F1DataState {
   setSelectedRaceKey: (key: number | null) => void;
   dataQuality: DataQuality;
   mapData: TrackMapData;
+  sessionMode: SessionMode;
+  replay: ReplayController;
 }
 
 export function useF1Data(): F1DataState {
@@ -159,6 +164,8 @@ export function useF1Data(): F1DataState {
   const [selectedRaceKey, setSelectedRaceKeyState] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
   const [mapData, setMapData] = useState<TrackMapData>(INITIAL_TRACK_MAP_DATA);
+  const sessionMode = getSessionMode(session, dataQuality);
+  const replay = useReplayClock(session, sessionMode);
 
   // Caching references
   const sessionListCacheRef = useRef<Session[] | null>(null);
@@ -557,7 +564,7 @@ export function useF1Data(): F1DataState {
         availability: finalStandings.length === 0 ? 'empty' : isPartialResponse ? 'partial' : 'ready',
         message: isPartialResponse
           ? 'Some OpenF1 endpoints are unavailable'
-          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
+          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 completed-session data',
       }));
     } catch (err) {
       if (!isCurrentRequest()) return;
@@ -657,5 +664,7 @@ export function useF1Data(): F1DataState {
     setSelectedRaceKey,
     dataQuality,
     mapData,
+    sessionMode,
+    replay,
   };
 }

@@ -28,6 +28,8 @@ import {
   getCatalogueSessionLabel,
 } from './domain/sessionCatalogue';
 import { getAnalyticsProvenance } from './domain/analyticsProvenance';
+import { getSessionModeLabel } from './domain/sessionMode';
+import { formatReplayElapsed } from './hooks/useReplayClock';
 import './App.css';
 
 type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
@@ -48,6 +50,8 @@ const App: React.FC = () => {
     dismissPitNotification,
     dataQuality,
     mapData,
+    sessionMode,
+    replay,
   } = useF1Data();
 
   // Analytics engine
@@ -63,7 +67,9 @@ const App: React.FC = () => {
     : 'F1 HUD';
 
   const sessionType = session
-    ? getSessionDisplayLabel(session)
+    ? sessionMode === 'replay'
+      ? `${normalizeSessionType(session)} · REPLAY`
+      : getSessionDisplayLabel(session)
     : (isLoading ? 'LOADING...' : 'DEMO DATA');
   const raceSession = session ? isRaceSession(session) : false;
   const standingsTitle = session
@@ -150,7 +156,35 @@ const App: React.FC = () => {
         </div>
 
         <div className="app-topbar__center">
-          {isLive && dataQuality.provenance === 'openf1' ? (
+          {sessionMode === 'replay' ? (
+            <>
+              <div className="app-topbar__replay-badge">
+                {getSessionModeLabel(sessionMode)}
+              </div>
+              <div className="app-topbar__replay-controls" aria-label="Historical replay controls">
+                <button
+                  type="button"
+                  onClick={replay.isPlaying ? replay.pause : replay.play}
+                  aria-label={replay.isPlaying ? 'Pause replay' : 'Play replay'}
+                >
+                  {replay.isPlaying ? 'Ⅱ' : '▶'}
+                </button>
+                <button type="button" onClick={replay.reset} aria-label="Reset replay">↺</button>
+                <select
+                  value={replay.speed}
+                  onChange={event => replay.setSpeed(Number(event.target.value))}
+                  aria-label="Replay speed"
+                >
+                  {[1, 10, 30, 60, 120].map(speed => (
+                    <option key={speed} value={speed}>{speed}×</option>
+                  ))}
+                </select>
+                <span className="app-topbar__replay-time">
+                  {formatReplayElapsed(replay.elapsedMs)}
+                </span>
+              </div>
+            </>
+          ) : isLive && dataQuality.provenance === 'openf1' ? (
             <div className="app-topbar__live-badge">
               <span className="live-dot" />
               LIVE

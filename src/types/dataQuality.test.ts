@@ -13,6 +13,7 @@ describe('data quality contracts', () => {
   it('labels cached and demo data truthfully', () => {
     expect(getDataQualityLabel(createDataQuality('cache'))).toBe('STALE DATA');
     expect(getDataQualityLabel(createDataQuality('demo'))).toBe('DEMO SIMULATION');
+    expect(getDataQualityLabel(createDataQuality('replay'))).toBe('HISTORICAL REPLAY');
   });
 
   it('supports explicit errors and timestamps', () => {

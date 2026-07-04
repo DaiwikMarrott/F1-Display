@@ -133,6 +133,50 @@
   text-transform: uppercase;
 }
 
+.app-topbar__replay-badge {
+  border: 1px solid #c080ff;
+  border-radius: 6px;
+  background: rgba(145, 0, 255, 0.14);
+  color: #d7b7ff;
+  padding: 5px 9px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.app-topbar__replay-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-topbar__replay-controls button,
+.app-topbar__replay-controls select {
+  min-height: 26px;
+  border: 1px solid #4c3a66;
+  border-radius: 4px;
+  background: #1f1f2e;
+  color: #ffffff;
+  padding: 3px 7px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.app-topbar__replay-controls button:focus-visible,
+.app-topbar__replay-controls select:focus-visible {
+  outline: 2px solid #f5a623;
+  outline-offset: 2px;
+}
+
+.app-topbar__replay-time {
+  min-width: 58px;
+  color: #d7b7ff;
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
 .app-topbar__lap-counter {
   font-size: 13px;
   font-weight: 700;
@@ -485,6 +529,7 @@
 }
 
 .app-analytics-source--derived,
+.app-analytics-source--replay,
 .app-analytics-source--cache,
 .app-analytics-source--openf1 {
   color: #78d7c6;

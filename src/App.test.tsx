@@ -84,6 +84,22 @@ describe('App critical UI flows', () => {
         message: 'Demo fixture',
       },
       mapData: INITIAL_TRACK_MAP_DATA,
+      sessionMode: 'completed-static',
+      replay: {
+        sessionKey: null,
+        startMs: null,
+        endMs: null,
+        timestamp: null,
+        elapsedMs: 0,
+        durationMs: 0,
+        progress: 0,
+        isPlaying: false,
+        speed: 60,
+        play: vi.fn(),
+        pause: vi.fn(),
+        reset: vi.fn(),
+        setSpeed: vi.fn(),
+      },
     });
     vi.mocked(useAnalytics).mockReturnValue(analytics);
   });
@@ -216,5 +232,27 @@ describe('App critical UI flows', () => {
     const { container } = render(<App />);
 
     expect(container.textContent).not.toMatch(/\b(?:NaN|Infinity|undefined|null)\b|\+-/);
+  });
+
+  it('labels completed-session replay and exposes deterministic controls', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      sessionMode: 'replay',
+      replay: {
+        ...vi.mocked(useF1Data)().replay,
+        sessionKey: 1,
+        timestamp: sessions[0].date_start,
+        durationMs: 7_200_000,
+        isPlaying: true,
+      },
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('HISTORICAL REPLAY')).toBeInTheDocument();
+    expect(screen.getByText('Race · REPLAY')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause replay' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset replay' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Replay speed' })).toHaveValue('60');
   });
 });
