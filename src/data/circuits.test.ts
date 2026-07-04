@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Session } from '../types/f1';
 import {
+  getAllCircuits,
   getCircuitByCountry,
+  getCircuitByEventName,
   getCircuitForSession,
 } from './circuits';
 
@@ -35,5 +37,55 @@ describe('session circuit resolution', () => {
 
   it('does not substitute an unrelated circuit for an unknown session', () => {
     expect(getCircuitForSession(session('Imaginary Ring', 'United States'))).toBeNull();
+  });
+
+  it('covers every canonical 2024 and 2025 circuit identity', () => {
+    const expected: Record<string, string> = {
+      Sakhir: 'bahrain',
+      Jeddah: 'saudi-arabia',
+      Melbourne: 'australia',
+      Suzuka: 'japan',
+      Shanghai: 'china',
+      Miami: 'miami',
+      Imola: 'imola',
+      'Monte Carlo': 'monaco',
+      Montreal: 'canada',
+      Catalunya: 'spain',
+      Spielberg: 'austria',
+      Silverstone: 'silverstone',
+      Hungaroring: 'hungary',
+      'Spa-Francorchamps': 'belgium',
+      Zandvoort: 'netherlands',
+      Monza: 'monza',
+      Baku: 'azerbaijan',
+      'Marina Bay': 'singapore',
+      Austin: 'austin',
+      'Mexico City': 'mexico',
+      Interlagos: 'brazil',
+      'Las Vegas': 'las-vegas',
+      Lusail: 'qatar',
+      'Yas Marina Circuit': 'abu-dhabi',
+    };
+
+    for (const [shortName, id] of Object.entries(expected)) {
+      expect(getCircuitForSession(session(shortName, 'Unknown'))?.id).toBe(id);
+    }
+  });
+
+  it('uses official event names only as a safe secondary identity', () => {
+    expect(getCircuitByEventName('FORMULA 1 JAPANESE GRAND PRIX 2025')?.id).toBe('japan');
+    expect(getCircuitByEventName('Emilia Romagna Grand Prix')?.id).toBe('imola');
+    expect(getCircuitByEventName('United States Grand Prix')?.id).toBe('austin');
+    expect(getCircuitForSession({
+      ...session('Unknown', 'Italy'),
+      meeting_name: 'Italian Grand Prix',
+    })?.id).toBe('monza');
+    expect(getCircuitByCountry('Italy')).toBeNull();
+  });
+
+  it('has one unique canonical id and name per layout', () => {
+    const circuits = getAllCircuits();
+    expect(new Set(circuits.map(circuit => circuit.id)).size).toBe(circuits.length);
+    expect(new Set(circuits.map(circuit => circuit.name)).size).toBe(circuits.length);
   });
 });

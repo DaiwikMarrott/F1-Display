@@ -246,6 +246,47 @@ export const CIRCUITS: Record<string, CircuitData> = {
     circuitAlternates: ['BAKU CITY CIRCUIT'],
     svgPath: `M 170 560 L 170 170 L 650 170 L 700 220 L 700 310 L 620 310 L 620 250 L 550 250 L 550 390 L 470 390 L 470 310 L 390 310 L 390 470 L 300 470 L 300 560 Z`,
   },
+  'imola': {
+    id: 'imola',
+    name: 'Autodromo Internazionale Enzo e Dino Ferrari',
+    country: 'Italy',
+    shortName: 'Imola',
+    countryAlternates: ['ITALY'],
+    circuitAlternates: [
+      'IMOLA',
+      'AUTODROMO ENZO E DINO FERRARI',
+      'AUTODROMO INTERNAZIONALE ENZO E DINO FERRARI',
+    ],
+    svgPath: `M 230 520 Q 180 470 190 400 L 220 330 Q 240 290 210 250 L 180 210 Q 170 170 210 140 L 310 110 Q 370 100 420 130 L 500 180 Q 540 200 580 180 L 650 140 Q 700 120 730 160 L 750 230 Q 760 280 730 320 L 680 370 Q 650 400 660 440 L 680 500 Q 690 540 650 570 L 540 600 Q 480 610 430 580 L 360 540 Q 320 520 280 540 Z`,
+  },
+};
+
+const EVENT_ALIASES: Record<string, string[]> = {
+  bahrain: ['BAHRAIN GRAND PRIX'],
+  'saudi-arabia': ['SAUDI ARABIAN GRAND PRIX'],
+  australia: ['AUSTRALIAN GRAND PRIX'],
+  japan: ['JAPANESE GRAND PRIX'],
+  china: ['CHINESE GRAND PRIX'],
+  miami: ['MIAMI GRAND PRIX'],
+  imola: ['EMILIA ROMAGNA GRAND PRIX', 'EMILIA-ROMAGNA GRAND PRIX'],
+  monaco: ['MONACO GRAND PRIX'],
+  canada: ['CANADIAN GRAND PRIX'],
+  spain: ['SPANISH GRAND PRIX'],
+  austria: ['AUSTRIAN GRAND PRIX'],
+  silverstone: ['BRITISH GRAND PRIX'],
+  hungary: ['HUNGARIAN GRAND PRIX'],
+  belgium: ['BELGIAN GRAND PRIX'],
+  netherlands: ['DUTCH GRAND PRIX'],
+  monza: ['ITALIAN GRAND PRIX'],
+  azerbaijan: ['AZERBAIJAN GRAND PRIX'],
+  singapore: ['SINGAPORE GRAND PRIX'],
+  austin: ['UNITED STATES GRAND PRIX'],
+  mexico: ['MEXICO CITY GRAND PRIX', 'MEXICAN GRAND PRIX'],
+  brazil: ['SAO PAULO GRAND PRIX', 'BRAZILIAN GRAND PRIX'],
+  'las-vegas': ['LAS VEGAS GRAND PRIX'],
+  qatar: ['QATAR GRAND PRIX'],
+  'abu-dhabi': ['ABU DHABI GRAND PRIX'],
+  madrid: ['MADRID GRAND PRIX', 'SPANISH GRAND PRIX'],
 };
 
 function normalizeCircuitName(value: string): string {
@@ -281,12 +322,42 @@ export function getCircuitByShortName(shortName: string | null | undefined): Cir
   }) ?? null;
 }
 
+export function getCircuitByEventName(eventName: string | null | undefined): CircuitData | null {
+  if (!eventName) return null;
+  const target = normalizeCircuitName(eventName);
+  const matches = Object.values(CIRCUITS).filter(circuit =>
+    (EVENT_ALIASES[circuit.id] ?? []).some(alias =>
+      target.includes(normalizeCircuitName(alias))),
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
 export function getCircuitForSession(
-  session: Pick<Session, 'circuit_short_name' | 'country_name'> | null | undefined,
+  session: Pick<
+    Session,
+    | 'circuit_short_name'
+    | 'country_name'
+    | 'meeting_name'
+    | 'meeting_official_name'
+    | 'location'
+  > | null | undefined,
 ): CircuitData | null {
   if (!session) return null;
-  return getCircuitByShortName(session.circuit_short_name)
-    ?? getCircuitByCountry(session.country_name);
+  const identityCandidates = [
+    session.circuit_short_name,
+    session.location,
+    session.meeting_name,
+    session.meeting_official_name,
+  ];
+  for (const candidate of identityCandidates) {
+    const exact = getCircuitByShortName(candidate);
+    if (exact) return exact;
+  }
+  for (const candidate of [session.meeting_name, session.meeting_official_name]) {
+    const eventMatch = getCircuitByEventName(candidate);
+    if (eventMatch) return eventMatch;
+  }
+  return getCircuitByCountry(session.country_name);
 }
 
 export function getCircuit(id: string): CircuitData | null {
