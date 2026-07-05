@@ -4,6 +4,8 @@
 
 The application has completed both the data-reliability hardening pass and the UI/map finishing sprint. Session state, circuit identity, bounded map data, interaction behavior, responsive layouts, and data labels are covered by mocked automated tests and browser smoke checks.
 
+The historical replay and analytics correctness sprint is complete. Completed sessions now replay timestamped OpenF1 records; calendar options are grouped across current year, 2025, and 2024; sectors/form use real lap records; unsupported telemetry, intervals, incidents, radio, and weather remain explicitly unavailable or demo-only.
+
 ## Completed checkpoints
 
 1. Validation foundation — `21f21ae`
@@ -74,7 +76,7 @@ The application has completed both the data-reliability hardening pass and the U
    - Removes fixed-width panel overflow at 1280×720, 1024×768, and 768px.
    - Adds a compact desktop layout, responsive tire cards, stable map sizing, namespaced timing/standings styles, and non-race/upcoming semantics.
 
-6. Regression coverage and truthful release documentation — `test: cover session map and polished UI flows` (this commit)
+6. Regression coverage and truthful release documentation — `2180911`
    - Expands focused coverage for map freshness, partial location snapshots, session-remount history, and impossible rendered strings.
    - Updates release documentation to match implemented behavior and deferred scope.
 
@@ -83,11 +85,31 @@ The application has completed both the data-reliability hardening pass and the U
 - Real OpenF1: sessions, drivers, positions, laps, stints, pits, locations, recent finishing positions.
 - Cached/stale: any previously successful OpenF1 response retained within its policy window or while revalidation is unavailable.
 - Derived: tire state, race progress, winner estimate, and comparisons computed from available data.
-- Estimated: sectors, strategy, form, and telemetry models where direct measurements are unavailable.
+- Estimated: tire degradation, strategy scenarios, winner probability, and map placement when synchronized coordinates are unavailable.
+- OpenF1-derived: sector analysis and form/momentum when valid completed lap records exist.
 - Demo-only: fallback standings, incidents, radio transcript, and weather simulation.
 - Unavailable: invalid, missing, future, incomplete, or unsupported metrics.
 
-For the map specifically, completed OpenF1 positions are `LATEST KNOWN`, not live. Invalid, sparse, or collapsed location data produces an explicitly labeled deterministic estimate or unavailable state.
+For the map specifically, completed OpenF1 positions are `REPLAY POSITIONS`, not live. Invalid, sparse, or collapsed location data produces an explicitly labeled deterministic estimate or unavailable state.
+
+## Feature replay and analytics sprint
+
+1. Feature inventory — `82fd5ef`
+   - Audited every documented analytical surface and recorded real, derived, estimated, demo-only, unavailable, and deferred behavior.
+2. Season/event catalogue — `4b0282a`
+   - Added current-year/2025/2024 session and meeting loading, duplicate-safe event grouping, and season-aware labels.
+3. Canonical circuit identity — `a3554ca`
+   - Added complete 2024/2025 circuit aliases including Imola and safe event-name fallback without ambiguous country substitution.
+4. Replay mode and clock — `2b9ce8a`
+   - Added live/replay/completed-static/upcoming/unavailable/demo modes and deterministic play/pause/reset/speed controls.
+5. Timeline-driven race state — `4b8afd5`
+   - Rebuilt standings, laps, stints, pits, tire state, probability, and map positions from records known at replay time.
+6. Analytics correctness — `3e5845c`
+   - Replaced synthetic sectors/form with real lap records, removed synthetic telemetry, and made H2H/replay provenance truthful.
+7. Request budgets — `175a58b`
+   - Added replay buckets, immutable historical cache windows, hidden-tab pause, session-aware reuse, and endpoint policy coverage.
+8. End-to-end coverage and release documentation — `test: cover replay calendar and analytics behavior`
+   - Locks down calendar, replay, map, analytics, provenance, request, and impossible-value behavior and reconciles release documentation.
 
 ## Verification
 
@@ -107,8 +129,9 @@ The tests use fixtures and mocked requests rather than the real OpenF1 service.
 ## Remaining limitations
 
 - No official interval/gap feed is currently integrated.
-- Weather, radio, incidents, and full telemetry remain explicitly labeled simulations or estimates.
-- Full map replay/scrubbing is not implemented; the map shows a synchronized snapshot.
+- Weather, radio, and incidents remain explicitly labeled deterministic simulations.
+- Telemetry and official gaps remain unavailable until bounded `car_data` and interval sources are integrated.
+- Replay uses synchronized five-minute location buckets rather than frame-level interpolation or manual scrubbing.
 - The cache is in-memory and browser-local; a persistent server-side cache is deferred.
 - Unknown circuit lap counts remain unavailable.
 - No externally validated prediction-accuracy dataset is included.

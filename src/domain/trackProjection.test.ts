@@ -63,6 +63,11 @@ describe('track projection', () => {
     })).toBe('LIVE POSITIONS');
     expect(getTrackMapLabel({
       ...base,
+      quality: createDataQuality('replay'),
+      mode: 'replay',
+    })).toBe('REPLAY POSITIONS');
+    expect(getTrackMapLabel({
+      ...base,
       quality: createDataQuality('cache'),
       mode: 'cached',
     })).toBe('CACHED POSITIONS');

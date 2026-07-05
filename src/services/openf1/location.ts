@@ -13,6 +13,11 @@ import type { OpenF1Result } from './client';
 
 type LocationFetcher = (path: string) => Promise<OpenF1Result<Location[]>>;
 
+const REPLAY_LOCATION_CACHE_POLICY = {
+  ttlMs: 30 * 60 * 1_000,
+  staleMs: 24 * 60 * 60 * 1_000,
+};
+
 interface GeometryCacheEntry {
   geometry: Location[];
   quality: DataQuality;
@@ -63,6 +68,13 @@ function chooseSnapshotTime(laps: Lap[]): number | null {
   return Date.parse(latest.date_start) + (latest.lap_duration * 500);
 }
 
+function lapsCompletedBy(laps: Lap[], replayTime: number): Lap[] {
+  return laps.filter(lap => {
+    if (!validLap(lap) || lap.lap_duration === null) return false;
+    return Date.parse(lap.date_start) + lap.lap_duration * 1_000 <= replayTime;
+  });
+}
+
 function mergeQuality(geometry: DataQuality, positions: DataQuality): DataQuality {
   if (geometry.provenance === 'cache' || positions.provenance === 'cache') {
     return createDataQuality('cache', {
@@ -91,6 +103,31 @@ export function clearLocationGeometryCache(): void {
   geometryCache.clear();
 }
 
+async function loadGeometryEntry(
+  session: Session,
+  laps: Lap[],
+  fetcher: LocationFetcher,
+): Promise<GeometryCacheEntry | undefined> {
+  const cached = geometryCache.get(session.session_key);
+  if (cached) return cached;
+
+  const referenceLap = chooseReferenceLap(laps);
+  if (!referenceLap || referenceLap.lap_duration === null) return undefined;
+  const geometryStart = Date.parse(referenceLap.date_start);
+  const geometryResult = await fetcher(boundedLocationPath(
+    session.session_key,
+    geometryStart,
+    geometryStart + referenceLap.lap_duration * 1_000,
+    referenceLap.driver_number,
+  ));
+  const geometry = geometryResult.data ?? [];
+  if (!hasUsableGeometry(geometry)) return undefined;
+
+  const entry = { geometry, quality: geometryResult.quality };
+  geometryCache.set(session.session_key, entry);
+  return entry;
+}
+
 export async function loadSessionLocationMap(
   session: Session,
   laps: Lap[],
@@ -110,9 +147,8 @@ export async function loadSessionLocationMap(
     };
   }
 
-  const referenceLap = chooseReferenceLap(laps);
   const snapshotTime = chooseSnapshotTime(laps);
-  if (!referenceLap || snapshotTime === null || referenceLap.lap_duration === null) {
+  if (snapshotTime === null) {
     return {
       geometry: [],
       positions: [],
@@ -125,21 +161,7 @@ export async function loadSessionLocationMap(
     };
   }
 
-  let geometryEntry = geometryCache.get(session.session_key);
-  if (!geometryEntry) {
-    const geometryStart = Date.parse(referenceLap.date_start);
-    const geometryResult = await fetcher(boundedLocationPath(
-      session.session_key,
-      geometryStart,
-      geometryStart + referenceLap.lap_duration * 1_000,
-      referenceLap.driver_number,
-    ));
-    const geometry = geometryResult.data ?? [];
-    if (hasUsableGeometry(geometry)) {
-      geometryEntry = { geometry, quality: geometryResult.quality };
-      geometryCache.set(session.session_key, geometryEntry);
-    }
-  }
+  const geometryEntry = await loadGeometryEntry(session, laps, fetcher);
 
   if (!geometryEntry) {
     return {
@@ -179,6 +201,78 @@ export async function loadSessionLocationMap(
     positions,
     quality,
     mode: modeFor(session, quality),
+    snapshotAt: positions.reduce(
+      (latest, location) => location.date > latest ? location.date : latest,
+      positions[0].date,
+    ),
+  };
+}
+
+export async function loadReplayLocationMap(
+  session: Session,
+  laps: Lap[],
+  replayTimestamp: string,
+  fetcher: LocationFetcher = path => openF1Client.request<Location[]>(path, {
+    cachePolicy: REPLAY_LOCATION_CACHE_POLICY,
+  }),
+): Promise<TrackMapData> {
+  const replayTime = Date.parse(replayTimestamp);
+  if (!Number.isFinite(replayTime)) {
+    return {
+      geometry: [],
+      positions: [],
+      quality: createDataQuality('unavailable', {
+        availability: 'error',
+        message: 'Replay timestamp is invalid',
+      }),
+      mode: 'unavailable',
+      snapshotAt: null,
+    };
+  }
+
+  const availableLaps = lapsCompletedBy(laps, replayTime);
+  const geometryEntry = await loadGeometryEntry(session, availableLaps, fetcher);
+  if (!geometryEntry) {
+    return {
+      geometry: [],
+      positions: [],
+      quality: createDataQuality('estimated', {
+        availability: 'partial',
+        message: 'Replay has not reached a complete lap for map geometry',
+      }),
+      mode: 'estimated',
+      snapshotAt: replayTimestamp,
+    };
+  }
+
+  const positionResult = await fetcher(boundedLocationPath(
+    session.session_key,
+    replayTime - 1_500,
+    replayTime + 1_500,
+  ));
+  const positions = latestLocationPerDriver(positionResult.data ?? []);
+  if (positions.length < 2 || areLocationsCollapsed(positions)) {
+    return {
+      geometry: geometryEntry.geometry,
+      positions: [],
+      quality: createDataQuality('estimated', {
+        availability: 'partial',
+        message: 'Replay location snapshot was missing or collapsed',
+      }),
+      mode: 'estimated',
+      snapshotAt: replayTimestamp,
+    };
+  }
+
+  return {
+    geometry: geometryEntry.geometry,
+    positions,
+    quality: createDataQuality('replay', {
+      freshness: positionResult.quality.freshness,
+      updatedAt: positionResult.quality.updatedAt,
+      message: 'Historical OpenF1 positions at the replay timestamp',
+    }),
+    mode: 'replay',
     snapshotAt: positions.reduce(
       (latest, location) => location.date > latest ? location.date : latest,
       positions[0].date,

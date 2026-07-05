@@ -3,6 +3,7 @@ import type { Location } from './f1';
 
 export type TrackMapMode =
   | 'live'
+  | 'replay'
   | 'latest-known'
   | 'cached'
   | 'stale'

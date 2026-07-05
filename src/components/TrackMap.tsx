@@ -170,6 +170,9 @@ const TrackMap: React.FC<Props> = ({
       className="track-map"
       data-session-key={session?.session_key ?? ''}
       data-meeting-key={session?.meeting_key ?? ''}
+      data-season={session?.year ?? ''}
+      data-event-name={session?.meeting_name ?? ''}
+      data-circuit-id={displayCircuit?.id ?? ''}
     >
       <div className="track-map__header">
         <span className="track-map__title">

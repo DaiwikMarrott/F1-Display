@@ -1,5 +1,6 @@
 export type DataProvenance =
   | 'openf1'
+  | 'replay'
   | 'cache'
   | 'derived'
   | 'estimated'
@@ -54,6 +55,8 @@ export function getDataQualityLabel(quality: DataQuality): string {
   switch (quality.provenance) {
     case 'openf1':
       return 'OPENF1 DATA';
+    case 'replay':
+      return 'HISTORICAL REPLAY';
     case 'cache':
       return 'CACHED DATA';
     case 'derived':

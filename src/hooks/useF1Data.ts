@@ -8,13 +8,18 @@ import type {
   Session,
   DriverStanding,
   PitNotification,
+  Meeting,
 } from '../types/f1';
 import type { DataQuality } from '../types/dataQuality';
 import { createDataQuality, INITIAL_DATA_QUALITY } from '../types/dataQuality';
 import type { TrackMapData } from '../types/map';
 import { INITIAL_TRACK_MAP_DATA } from '../types/map';
+import type { ReplayController, SessionMode } from '../types/replay';
 import { getOpenF1Data } from '../services/openf1/client';
-import { loadSessionLocationMap } from '../services/openf1/location';
+import {
+  loadReplayLocationMap,
+  loadSessionLocationMap,
+} from '../services/openf1/location';
 import {
   getSessionPhase,
   isRaceSession,
@@ -28,6 +33,18 @@ import {
   plausiblePitDuration,
   shouldEmitPitNotifications,
 } from '../domain/pitNotifications';
+import {
+  enrichSessionsWithMeetings,
+  normalizeSessionRecords,
+} from '../domain/sessionCatalogue';
+import { getSessionMode } from '../domain/sessionMode';
+import { useReplayClock } from './useReplayClock';
+import {
+  buildReplaySnapshot,
+  lapsKnownAtReplayTime,
+} from '../domain/replaySnapshot';
+import type { ReplayDataset } from '../domain/replaySnapshot';
+import { getReplayMapTimestamp } from '../services/openf1/replay';
 
 function formatGap(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -139,6 +156,9 @@ export interface F1DataState {
   setSelectedRaceKey: (key: number | null) => void;
   dataQuality: DataQuality;
   mapData: TrackMapData;
+  sessionMode: SessionMode;
+  replay: ReplayController;
+  analyticsLaps: Lap[];
 }
 
 export function useF1Data(): F1DataState {
@@ -154,15 +174,16 @@ export function useF1Data(): F1DataState {
   const [selectedRaceKey, setSelectedRaceKeyState] = useState<number | null>(null);
   const [dataQuality, setDataQuality] = useState<DataQuality>(INITIAL_DATA_QUALITY);
   const [mapData, setMapData] = useState<TrackMapData>(INITIAL_TRACK_MAP_DATA);
+  const [analyticsLaps, setAnalyticsLaps] = useState<Lap[]>([]);
+  const sessionMode = getSessionMode(session, dataQuality);
+  const replay = useReplayClock(session, sessionMode);
+  const replayTimestampRef = useRef<string | null>(replay.timestamp);
+  replayTimestampRef.current = replay.timestamp;
 
   // Caching references
   const sessionListCacheRef = useRef<Session[] | null>(null);
-  const raceDataCacheRef = useRef<Map<number, {
-    standings: DriverStanding[];
-    maxLap: number;
-    totalLaps: number;
-    mapData: TrackMapData;
-  }>>(new Map());
+  const replayDataCacheRef = useRef<Map<number, ReplayDataset>>(new Map());
+  const replayMapRef = useRef<TrackMapData>(INITIAL_TRACK_MAP_DATA);
   const requestGenerationRef = useRef(0);
 
   const prevPitDataRef = useRef<Map<number, number>>(new Map());
@@ -190,6 +211,8 @@ export function useF1Data(): F1DataState {
     setError(null);
     setDataQuality(INITIAL_DATA_QUALITY);
     setMapData(INITIAL_TRACK_MAP_DATA);
+    setAnalyticsLaps([]);
+    replayMapRef.current = INITIAL_TRACK_MAP_DATA;
     prevPitDataRef.current = new Map();
     prevPitSessionKeyRef.current = null;
   }, [availableRaces]);
@@ -199,25 +222,40 @@ export function useF1Data(): F1DataState {
     const isCurrentRequest = () => requestGeneration === requestGenerationRef.current;
 
     try {
-      // 1. Fetch or use cached races for the current year
+      // 1. Fetch or use the normalized multi-season session catalogue.
       let sessionsResp: Session[] = [];
       if (sessionListCacheRef.current) {
         sessionsResp = sessionListCacheRef.current;
       } else {
         try {
           const currentYear = new Date().getFullYear();
-          sessionsResp = await getOpenF1Data<Session[]>(`/sessions?year=${currentYear}`);
+          const catalogueYears = [...new Set([currentYear, 2025, 2024])];
+          const [sessionBatches, meetingBatches] = await Promise.all([
+            Promise.allSettled(
+              catalogueYears.map(year => getOpenF1Data<Session[]>(`/sessions?year=${year}`)),
+            ),
+            Promise.allSettled(
+              catalogueYears.map(year => getOpenF1Data<Meeting[]>(`/meetings?year=${year}`)),
+            ),
+          ]);
           if (!isCurrentRequest()) return;
+          const sessionRows = sessionBatches.flatMap(fulfilledArray);
+          const meetingRows = meetingBatches.flatMap(fulfilledArray);
+          if (sessionRows.length === 0 && sessionBatches.every(result => result.status === 'rejected')) {
+            throw new Error('OpenF1 session catalogue is unavailable');
+          }
+          sessionsResp = enrichSessionsWithMeetings(sessionRows, meetingRows);
           if (sessionsResp.length > 0) {
             sessionListCacheRef.current = sessionsResp;
           }
         } catch (e) {
           console.warn('Failed to fetch sessions, injecting fallback DEMO races:', e);
           sessionsResp = [
-            { session_key: 9158, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
-            { session_key: 9166, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
-            { session_key: 9173, session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
+            { session_key: 9158, meeting_name: 'Bahrain Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-02T15:00:00', date_end: '2024-03-02T17:00:00', circuit_short_name: 'Sakhir', country_name: 'Bahrain', year: 2024, meeting_key: 1229 },
+            { session_key: 9166, meeting_name: 'Saudi Arabian Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-09T17:00:00', date_end: '2024-03-09T19:00:00', circuit_short_name: 'Jeddah', country_name: 'Saudi Arabia', year: 2024, meeting_key: 1230 },
+            { session_key: 9173, meeting_name: 'Australian Grand Prix', session_name: 'Race', session_type: 'Race', status: 'completed', date_start: '2024-03-24T04:00:00', date_end: '2024-03-24T06:00:00', circuit_short_name: 'Melbourne', country_name: 'Australia', year: 2024, meeting_key: 1231 },
           ];
+          sessionsResp = normalizeSessionRecords(sessionsResp);
           sessionListCacheRef.current = sessionsResp;
         }
       }
@@ -312,29 +350,36 @@ export function useF1Data(): F1DataState {
         return;
       }
 
-      // 3. Stale-while-revalidate: check cache for complete races
-      if (!isLiveSession && raceDataCacheRef.current.has(sk)) {
-        const cached = raceDataCacheRef.current.get(sk)!;
-        setStandings(cached.standings);
-        setCurrentLap(cached.maxLap);
-        setTotalLaps(cached.totalLaps);
-        setMapData({
-          ...cached.mapData,
-          quality: createDataQuality('cache', {
-            freshness: 'stale',
-            updatedAt: cached.mapData.quality.updatedAt,
-            message: 'Showing cached completed-session map data',
-          }),
-          mode: cached.mapData.positions.length > 0 ? 'stale' : cached.mapData.mode,
-        });
+      const cachedReplayDataset = replayDataCacheRef.current.get(sk);
+      if (sessionPhase === 'completed' && cachedReplayDataset) {
+        const replayTimestamp = new Date(targetSession.date_start).toISOString();
+        const initialMap = await loadReplayLocationMap(
+          targetSession,
+          cachedReplayDataset.laps,
+          replayTimestamp,
+        );
+        if (!isCurrentRequest()) return;
+        replayMapRef.current = initialMap;
+        const replaySnapshot = buildReplaySnapshot(
+          cachedReplayDataset,
+          replayTimestamp,
+          isRace ? (raceLapCount ?? 0) : 0,
+          initialMap.positions,
+        );
+        setStandings(replaySnapshot.standings);
+        setCurrentLap(replaySnapshot.currentLap);
+        setMapData(initialMap);
+        setAnalyticsLaps(lapsKnownAtReplayTime(cachedReplayDataset.laps, replayTimestamp));
         setIsLive(false);
-        setIsLoading(false);
         setError(null);
-        setDataQuality(createDataQuality('cache', { freshness: 'stale', message: 'Showing cached completed-session data' }));
+        setDataQuality(createDataQuality('replay', {
+          availability: replaySnapshot.standings.length > 0 ? 'ready' : 'partial',
+          message: `Cached historical records through ${replayTimestamp}`,
+        }));
         return;
       }
 
-      // 4. Fetch all race data in parallel
+      // 3. Fetch the bounded/cached session resources in parallel.
       const [drivers, rawPositions, laps, stints, pits] = await Promise.allSettled([
         getOpenF1Data<Driver[]>(`/drivers?session_key=${sk}`),
         getOpenF1Data<Position[]>(`/position?session_key=${sk}`),
@@ -386,6 +431,43 @@ export function useF1Data(): F1DataState {
           snapshotAt: null,
         });
         setIsLoading(false);
+        return;
+      }
+
+      if (sessionPhase === 'completed') {
+        const replayDataset: ReplayDataset = {
+          drivers: driversData,
+          positions: positionsData,
+          laps: lapsData,
+          stints: stintsData,
+          pits: pitsData,
+          partial: isPartialResponse,
+        };
+        replayDataCacheRef.current.set(sk, replayDataset);
+        const replayTimestamp = new Date(targetSession.date_start).toISOString();
+        const initialMap = await loadReplayLocationMap(
+          targetSession,
+          lapsData,
+          replayTimestamp,
+        );
+        if (!isCurrentRequest()) return;
+        replayMapRef.current = initialMap;
+        const replaySnapshot = buildReplaySnapshot(
+          replayDataset,
+          replayTimestamp,
+          isRace ? (raceLapCount ?? 0) : 0,
+          initialMap.positions,
+        );
+        setStandings(replaySnapshot.standings);
+        setCurrentLap(replaySnapshot.currentLap);
+        setMapData(initialMap);
+        setAnalyticsLaps(lapsKnownAtReplayTime(lapsData, replayTimestamp));
+        setIsLive(false);
+        setError(null);
+        setDataQuality(createDataQuality('replay', {
+          availability: replaySnapshot.standings.length > 0 ? 'ready' : 'partial',
+          message: `Historical records through ${replayTimestamp}`,
+        }));
         return;
       }
 
@@ -519,17 +601,8 @@ export function useF1Data(): F1DataState {
 
       const finalStandings = applyWinProbabilities(newStandings, lapsRemaining);
 
-      // Update cache explicitly via current ref mapping
-      if (!isLiveSession && driversData !== DEMO_DRIVERS) {
-        raceDataCacheRef.current.set(sk, {
-          standings: finalStandings,
-          maxLap,
-          totalLaps: isRace ? (raceLapCount ?? 0) : 0,
-          mapData: nextMapData,
-        });
-      }
-
       setStandings(finalStandings);
+      setAnalyticsLaps(lapsData);
       setMapData(nextMapData);
       setIsLive(isLiveSession);
       setError(null);
@@ -537,7 +610,7 @@ export function useF1Data(): F1DataState {
         availability: finalStandings.length === 0 ? 'empty' : isPartialResponse ? 'partial' : 'ready',
         message: isPartialResponse
           ? 'Some OpenF1 endpoints are unavailable'
-          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 replay data',
+          : isLiveSession ? 'Live OpenF1 session data' : 'OpenF1 completed-session data',
       }));
     } catch (err) {
       if (!isCurrentRequest()) return;
@@ -591,6 +664,67 @@ export function useF1Data(): F1DataState {
     fetchData();
   }, [selectedRaceKey, fetchData]);
 
+  // Derive visible replay standings, laps, tires, and pits from records known
+  // at the current clock timestamp without issuing a request on every tick.
+  useEffect(() => {
+    if (sessionMode !== 'replay' || !session || !replay.timestamp) return;
+    const dataset = replayDataCacheRef.current.get(session.session_key);
+    if (!dataset) return;
+    const snapshot = buildReplaySnapshot(
+      dataset,
+      replay.timestamp,
+      totalLaps,
+      replayMapRef.current.positions,
+    );
+    setStandings(snapshot.standings);
+    setCurrentLap(snapshot.currentLap);
+    setAnalyticsLaps(lapsKnownAtReplayTime(dataset.laps, replay.timestamp));
+    setPitNotifications([]);
+    setDataQuality(createDataQuality('replay', {
+      availability: snapshot.standings.length > 0 ? 'ready' : 'partial',
+      message: `Historical records through ${snapshot.recordsThrough}`,
+    }));
+  }, [replay.timestamp, session, sessionMode, totalLaps]);
+
+  const replayMapTimestamp = sessionMode === 'replay' && session && replay.timestamp
+    ? getReplayMapTimestamp(session.date_start, replay.timestamp)
+    : null;
+
+  // Location snapshots are independently bounded and bucketed so a fast
+  // replay clock cannot turn into one network request per rendered tick.
+  useEffect(() => {
+    if (sessionMode !== 'replay' || !session || !replayMapTimestamp) return undefined;
+    const dataset = replayDataCacheRef.current.get(session.session_key);
+    if (!dataset) return undefined;
+    const requestGeneration = requestGenerationRef.current;
+    let cancelled = false;
+
+    void loadReplayLocationMap(session, dataset.laps, replayMapTimestamp)
+      .then(nextMap => {
+        if (
+          cancelled
+          || requestGeneration !== requestGenerationRef.current
+        ) return;
+        replayMapRef.current = nextMap;
+        setMapData(nextMap);
+        const currentReplayTimestamp = replayTimestampRef.current;
+        if (currentReplayTimestamp) {
+          const snapshot = buildReplaySnapshot(
+            dataset,
+            currentReplayTimestamp,
+            totalLaps,
+            nextMap.positions,
+          );
+          setStandings(snapshot.standings);
+          setCurrentLap(snapshot.currentLap);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [replayMapTimestamp, session, sessionMode, totalLaps]);
+
   // Poll only when the selected session policy requires it.
   useEffect(() => {
     const pollingInterval = getSessionPollingInterval(session);
@@ -637,5 +771,8 @@ export function useF1Data(): F1DataState {
     setSelectedRaceKey,
     dataQuality,
     mapData,
+    sessionMode,
+    replay,
+    analyticsLaps,
   };
 }

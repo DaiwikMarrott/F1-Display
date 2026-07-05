@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DriverStanding } from '../types/f1';
+import type { DriverStanding, Lap } from '../types/f1';
 import { calculateAnalytics } from './useAnalytics';
 
 const standing: DriverStanding = {
@@ -65,5 +65,30 @@ describe('deterministic analytics', () => {
     expect(result.gapTrends.size).toBe(0);
     expect(result.formData.size).toBe(0);
     expect(result.strategies.size).toBe(0);
+  });
+
+  it('uses real lap sectors and recent laps while leaving telemetry unavailable', () => {
+    const laps: Lap[] = Array.from({ length: 5 }, (_, index) => ({
+      driver_number: 16,
+      lap_number: index + 1,
+      lap_duration: 91 - index * 0.2,
+      duration_sector_1: 30 - index * 0.05,
+      duration_sector_2: 36 - index * 0.05,
+      duration_sector_3: 25 - index * 0.1,
+      i1_speed: null,
+      i2_speed: null,
+      st_speed: null,
+      date_start: `2025-05-25T13:0${index}:00Z`,
+      is_pit_out_lap: false,
+      session_key: 1,
+      meeting_key: 1,
+    }));
+
+    const result = calculateAnalytics([standing], 5, 66, laps);
+    expect(result.sectors.get(16)?.sector1).toBeCloseTo(29_800);
+    expect(result.sectors.get(16)?.sector2).toBeCloseTo(35_800);
+    expect(result.sectors.get(16)?.sector3).toBeCloseTo(24_600);
+    expect(result.formData.get(16)?.last5Laps).toEqual([91, 90.8, 90.6, 90.4, 90.2]);
+    expect(result.telemetry.size).toBe(0);
   });
 });

@@ -20,11 +20,16 @@ import WeatherPanel from './components/WeatherPanel';
 import { getDataQualityLabel } from './types/dataQuality';
 import {
   getSessionDisplayLabel,
-  getSessionOptions,
   isRaceSession,
   normalizeSessionType,
 } from './domain/sessionSelection';
+import {
+  buildSessionCatalogue,
+  getCatalogueSessionLabel,
+} from './domain/sessionCatalogue';
 import { getAnalyticsProvenance } from './domain/analyticsProvenance';
+import { getSessionModeLabel } from './domain/sessionMode';
+import { formatReplayElapsed } from './hooks/useReplayClock';
 import './App.css';
 
 type AnalyticsTab = 'timing' | 'tires' | 'sectors' | 'gaps' | 'strategy' | 'form' | 'telemetry' | 'incidents' | 'h2h' | 'radio' | 'weather';
@@ -45,10 +50,13 @@ const App: React.FC = () => {
     dismissPitNotification,
     dataQuality,
     mapData,
+    sessionMode,
+    replay,
+    analyticsLaps,
   } = useF1Data();
 
   // Analytics engine
-  const analytics = useAnalytics(standings, currentLap, totalLaps);
+  const analytics = useAnalytics(standings, currentLap, totalLaps, analyticsLaps);
   const incidents = useIncidentDetection(standings, currentLap, totalLaps);
 
   const [showRaceSelector, setShowRaceSelector] = useState(false);
@@ -56,18 +64,27 @@ const App: React.FC = () => {
   const raceSelectorRef = useRef<HTMLDivElement>(null);
 
   const raceName = session
-    ? `${session.country_name} — ${session.circuit_short_name}`
+    ? `${session.year ?? new Date(session.date_start).getUTCFullYear()} ${session.meeting_name || session.country_name} — ${session.circuit_short_name}`
     : 'F1 HUD';
 
   const sessionType = session
-    ? getSessionDisplayLabel(session)
+    ? sessionMode === 'replay'
+      ? `${normalizeSessionType(session)} · REPLAY`
+      : getSessionDisplayLabel(session)
     : (isLoading ? 'LOADING...' : 'DEMO DATA');
   const raceSession = session ? isRaceSession(session) : false;
   const standingsTitle = session
     ? `${normalizeSessionType(session).toUpperCase()} ${raceSession && standings.length > 0 ? 'STANDINGS' : 'ORDER'}`
     : 'SESSION ORDER';
 
-  const sessionOptions = useMemo(() => getSessionOptions(availableRaces), [availableRaces]);
+  const sessionCatalogue = useMemo(
+    () => buildSessionCatalogue(availableRaces),
+    [availableRaces],
+  );
+  const sessionOptionCount = sessionCatalogue.reduce(
+    (count, event) => count + event.sessions.length,
+    0,
+  );
   const analyticsProvenance = getAnalyticsProvenance(analyticsPanelTab, dataQuality);
 
   const handleRaceSelect = (sessionKey: number | null) => {
@@ -140,7 +157,38 @@ const App: React.FC = () => {
         </div>
 
         <div className="app-topbar__center">
-          {isLive && dataQuality.provenance === 'openf1' ? (
+          {sessionMode === 'replay' ? (
+            <>
+              <div className="app-topbar__replay-badge" title={dataQuality.message}>
+                {getSessionModeLabel(sessionMode)}
+              </div>
+              <div className="app-topbar__replay-controls" aria-label="Historical replay controls">
+                <button
+                  type="button"
+                  onClick={replay.isPlaying ? replay.pause : replay.play}
+                  aria-label={replay.isPlaying ? 'Pause replay' : 'Play replay'}
+                >
+                  {replay.isPlaying ? 'Ⅱ' : '▶'}
+                </button>
+                <button type="button" onClick={replay.reset} aria-label="Reset replay">↺</button>
+                <select
+                  value={replay.speed}
+                  onChange={event => replay.setSpeed(Number(event.target.value))}
+                  aria-label="Replay speed"
+                >
+                  {[1, 10, 30, 60, 120].map(speed => (
+                    <option key={speed} value={speed}>{speed}×</option>
+                  ))}
+                </select>
+                <span className="app-topbar__replay-time">
+                  {formatReplayElapsed(replay.elapsedMs)}
+                </span>
+                <span className="app-topbar__replay-through">
+                  {currentLap > 0 ? `THROUGH LAP ${currentLap}` : 'RACE START'}
+                </span>
+              </div>
+            </>
+          ) : isLive && dataQuality.provenance === 'openf1' ? (
             <div className="app-topbar__live-badge">
               <span className="live-dot" />
               LIVE
@@ -166,13 +214,13 @@ const App: React.FC = () => {
             <button
               className="app-topbar__race-btn"
               onClick={() => setShowRaceSelector(!showRaceSelector)}
-              title={`${sessionOptions.length} sessions available`}
+              title={`${sessionOptionCount} sessions across ${sessionCatalogue.length} events`}
               aria-label="Select session"
               aria-expanded={showRaceSelector}
               aria-haspopup="true"
               aria-controls="session-selector-dropdown"
             >
-              🏁 SESSIONS ({sessionOptions.length})
+              🏁 EVENTS ({sessionCatalogue.length})
             </button>
             {showRaceSelector && (
               <div
@@ -186,20 +234,38 @@ const App: React.FC = () => {
                   📍 Latest Race
                 </button>
                 <div className="app-topbar__race-divider" />
-                {sessionOptions.length > 0 ? (
-                  sessionOptions.map(race => (
-                    <button
-                      key={race.session_key}
-                      className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
-                        }`}
-                      onClick={() => handleRaceSelect(race.session_key)}
-                      title={new Date(race.date_start).toLocaleDateString()}
+                {sessionCatalogue.length > 0 ? (
+                  sessionCatalogue.map(event => (
+                    <div
+                      className="app-topbar__event-group"
+                      key={event.id}
+                      role="group"
+                      aria-label={`${event.year} ${event.eventName}`}
                     >
-                      <span className="race-flag">🏁</span>
-                      <span className="race-name">{race.country_name}</span>
-                      <span className="race-circuit">{race.circuit_short_name}</span>
-                      <span className="race-session">{getSessionDisplayLabel(race)}</span>
-                    </button>
+                      <div className="app-topbar__event-header">
+                        <span className="event-year">{event.year}</span>
+                        <span className="event-name">{event.eventName}</span>
+                        <span className="event-circuit">
+                          {event.countryName} · {event.circuitShortName}
+                        </span>
+                      </div>
+                      {event.sessions.map(race => (
+                        <button
+                          key={race.session_key}
+                          className={`app-topbar__race-option ${selectedRaceKey === race.session_key ? 'active' : ''
+                            }`}
+                          onClick={() => handleRaceSelect(race.session_key)}
+                          title={new Date(race.date_start).toLocaleString()}
+                          aria-label={getCatalogueSessionLabel(race)}
+                        >
+                          <span className="race-flag">🏁</span>
+                          <span className="race-session">{getSessionDisplayLabel(race)}</span>
+                          <span className="race-date">
+                            {new Date(race.date_start).toLocaleDateString()}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   ))
                 ) : (
                   <div className="app-topbar__no-races">

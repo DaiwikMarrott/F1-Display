@@ -117,6 +117,8 @@ export function getTrackMapLabel(data: TrackMapData): string {
   switch (data.mode) {
     case 'live':
       return time ? `LIVE POSITIONS · ${time}` : 'LIVE POSITIONS';
+    case 'replay':
+      return time ? `REPLAY POSITIONS · ${time}` : 'REPLAY POSITIONS';
     case 'latest-known':
       return time ? `LATEST KNOWN · ${time}` : 'LATEST KNOWN POSITIONS';
     case 'cached':

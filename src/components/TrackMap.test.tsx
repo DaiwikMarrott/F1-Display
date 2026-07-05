@@ -146,6 +146,49 @@ describe('TrackMap circuit states', () => {
     expect(screen.queryByLabelText('Las Vegas Grand Prix track map')).not.toBeInTheDocument();
   });
 
+  it('switches canonical geometry and identity from Japan to Monaco', () => {
+    const { container, rerender } = render(
+      <TrackMap
+        standings={[]}
+        session={session({
+          year: 2025,
+          meeting_name: 'Japanese Grand Prix',
+          circuit_short_name: 'Suzuka',
+          country_name: 'Japan',
+        })}
+        currentLap={0}
+        isLoading={false}
+        mapData={mapData()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Suzuka International Racing Course track map')).toBeInTheDocument();
+    expect(container.querySelector('.track-map')).toHaveAttribute('data-circuit-id', 'japan');
+    expect(container.querySelector('.track-map')).toHaveAttribute('data-season', '2025');
+
+    rerender(
+      <TrackMap
+        standings={[]}
+        session={session({
+          session_key: 2,
+          meeting_key: 2,
+          year: 2024,
+          meeting_name: 'Monaco Grand Prix',
+          circuit_short_name: 'Monte Carlo',
+          country_name: 'Monaco',
+        })}
+        currentLap={0}
+        isLoading={false}
+        mapData={mapData()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Circuit de Monaco track map')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Suzuka International Racing Course track map')).not.toBeInTheDocument();
+    expect(container.querySelector('.track-map')).toHaveAttribute('data-circuit-id', 'monaco');
+    expect(container.querySelector('.track-map')).toHaveAttribute('data-event-name', 'Monaco Grand Prix');
+  });
+
   it('exposes marker details to keyboard focus and clears them on session change', async () => {
     const user = userEvent.setup();
     const geometry = Array.from({ length: 30 }, (_, index) => location(index));
@@ -182,5 +225,27 @@ describe('TrackMap circuit states', () => {
     );
 
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
+  it('labels historical marker snapshots as replay rather than live', () => {
+    const geometry = Array.from({ length: 30 }, (_, index) => location(index));
+    render(
+      <TrackMap
+        standings={[standing]}
+        session={session({})}
+        currentLap={10}
+        isLoading={false}
+        mapData={mapData({
+          geometry,
+          positions: [location(10)],
+          mode: 'replay',
+          snapshotAt: '2026-06-01T12:00:10Z',
+          quality: createDataQuality('replay'),
+        })}
+      />,
+    );
+
+    expect(screen.getByText(/REPLAY POSITIONS/)).toBeInTheDocument();
+    expect(screen.queryByText(/LIVE POSITIONS/)).not.toBeInTheDocument();
   });
 });

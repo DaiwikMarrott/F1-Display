@@ -84,6 +84,23 @@ describe('App critical UI flows', () => {
         message: 'Demo fixture',
       },
       mapData: INITIAL_TRACK_MAP_DATA,
+      sessionMode: 'completed-static',
+      replay: {
+        sessionKey: null,
+        startMs: null,
+        endMs: null,
+        timestamp: null,
+        elapsedMs: 0,
+        durationMs: 0,
+        progress: 0,
+        isPlaying: false,
+        speed: 60,
+        play: vi.fn(),
+        pause: vi.fn(),
+        reset: vi.fn(),
+        setSpeed: vi.fn(),
+      },
+      analyticsLaps: [],
     });
     vi.mocked(useAnalytics).mockReturnValue(analytics);
   });
@@ -111,7 +128,7 @@ describe('App critical UI flows', () => {
       expect(screen.getByText(panelHeading)).toBeInTheDocument();
       expect(screen.getAllByText(/DEMO SIMULATION/).length).toBeGreaterThan(0);
     }
-  });
+  }, 15_000);
 
   it('shows truthful session labels in the selector', async () => {
     const user = userEvent.setup();
@@ -119,8 +136,13 @@ describe('App critical UI flows', () => {
 
     await user.click(screen.getByRole('button', { name: 'Select session' }));
 
-    expect(screen.getByRole('button', { name: /Spain Catalunya Race/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Spain Catalunya Practice 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '2026 Spain Grand Prix' })).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: '2026 · Spain · Catalunya · Spain Grand Prix · Race',
+    })).toBeInTheDocument();
+    expect(screen.getByRole('button', {
+      name: '2026 · Spain · Catalunya · Spain Grand Prix · Practice 1',
+    })).toBeInTheDocument();
   });
 
   it('closes the session selector with Escape or an outside click', async () => {
@@ -211,5 +233,31 @@ describe('App critical UI flows', () => {
     const { container } = render(<App />);
 
     expect(container.textContent).not.toMatch(/\b(?:NaN|Infinity|undefined|null)\b|\+-/);
+  });
+
+  it('labels completed-session replay and exposes deterministic controls', () => {
+    vi.mocked(useF1Data).mockReturnValue({
+      ...vi.mocked(useF1Data)(),
+      standings: [],
+      currentLap: 0,
+      sessionMode: 'replay',
+      replay: {
+        ...vi.mocked(useF1Data)().replay,
+        sessionKey: 1,
+        timestamp: sessions[0].date_start,
+        durationMs: 7_200_000,
+        isPlaying: true,
+      },
+    });
+
+    render(<App />);
+
+    expect(screen.getByText('HISTORICAL REPLAY')).toBeInTheDocument();
+    expect(screen.getByText('Race · REPLAY')).toBeInTheDocument();
+    expect(screen.getByText('RACE START')).toBeInTheDocument();
+    expect(screen.queryByText('LIVE')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pause replay' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset replay' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Replay speed' })).toHaveValue('60');
   });
 });

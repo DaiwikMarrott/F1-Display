@@ -12,7 +12,7 @@ describe('analytics provenance', () => {
     const source = createDataQuality('openf1');
 
     expect(getAnalyticsProvenance('telemetry', source).label)
-      .toBe('ESTIMATED — NOT LIVE TELEMETRY');
+      .toBe('TELEMETRY UNAVAILABLE — CAR DATA NOT LOADED');
     expect(getAnalyticsProvenance('radio', source).label)
       .toBe('DEMO SIMULATION — NOT A LIVE FEED');
   });
@@ -36,5 +36,15 @@ describe('analytics provenance', () => {
     expect(getAnalyticsProvenance('timing', createDataQuality('openf1', {
       availability: 'error',
     }))).toEqual({ provenance: 'unavailable', label: 'DATA UNAVAILABLE' });
+  });
+
+  it('distinguishes historical replay, replay-derived, and demo-only panels', () => {
+    const replay = createDataQuality('replay');
+    expect(getAnalyticsProvenance('timing', replay).label).toBe('HISTORICAL REPLAY DATA');
+    expect(getAnalyticsProvenance('tires', replay).label).toBe('DERIVED FROM REPLAY DATA');
+    expect(getAnalyticsProvenance('telemetry', replay).label)
+      .toBe('TELEMETRY UNAVAILABLE — CAR DATA NOT LOADED');
+    expect(getAnalyticsProvenance('radio', replay).label)
+      .toBe('DEMO SIMULATION — NOT REPLAY DATA');
   });
 });

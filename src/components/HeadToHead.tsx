@@ -9,6 +9,8 @@ import './HeadToHead.css';
 
 interface SessionLite {
     session_key: number;
+    meeting_key?: number;
+    year?: number;
     date_start: string;
     date_end: string;
     country_name: string;
@@ -40,7 +42,8 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
             .filter(race => race.session_type.toLowerCase() === 'race')
             .filter(race => Date.parse(race.date_end) <= Date.now())
             .filter(race => {
-                const raceId = `${race.country_name}_${race.circuit_short_name}`;
+                const year = race.year ?? new Date(race.date_start).getUTCFullYear();
+                const raceId = `${year}_${race.meeting_key ?? `${race.country_name}_${race.circuit_short_name}`}`;
                 if (seen.has(raceId)) return false;
                 seen.add(raceId);
                 return true;
@@ -136,6 +139,11 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
         return val1 > val2 ? 'better-1' : 'better-2';
     };
 
+    const telemetryValue = (value: number | undefined, suffix: string): string =>
+        typeof value === 'number' && Number.isFinite(value) && value > 0
+            ? `${Math.round(value)}${suffix}`
+            : 'Unavailable';
+
     const formatLapTime = (val: number | null | undefined) => {
         if (!val || val === 0) return 'NO TIME';
         const m = Math.floor(val / 60);
@@ -197,14 +205,14 @@ export default function HeadToHead({ standings, analytics, availableRaces }: Pro
                 {/* Telemetry */}
                 <div className="h2h-divider">TELEMETRY</div>
                 <div className="h2h-row">
-                    <div className={`h2h-cell h2h-cell--1 ${compareStat(d1.telemetry?.topSpeed || 0, d2.telemetry?.topSpeed || 0) === 'better-1' ? 'h2h-winner' : ''}`}>{d1.telemetry?.topSpeed} km/h</div>
+                    <div className={`h2h-cell h2h-cell--1 ${compareStat(d1.telemetry?.topSpeed || 0, d2.telemetry?.topSpeed || 0) === 'better-1' ? 'h2h-winner' : ''}`}>{telemetryValue(d1.telemetry?.topSpeed, ' km/h')}</div>
                     <div className="h2h-label">TOP SPEED</div>
-                    <div className={`h2h-cell h2h-cell--2 ${compareStat(d1.telemetry?.topSpeed || 0, d2.telemetry?.topSpeed || 0) === 'better-2' ? 'h2h-winner' : ''}`}>{d2.telemetry?.topSpeed} km/h</div>
+                    <div className={`h2h-cell h2h-cell--2 ${compareStat(d1.telemetry?.topSpeed || 0, d2.telemetry?.topSpeed || 0) === 'better-2' ? 'h2h-winner' : ''}`}>{telemetryValue(d2.telemetry?.topSpeed, ' km/h')}</div>
                 </div>
                 <div className="h2h-row">
-                    <div className={`h2h-cell h2h-cell--1 ${compareStat(d1.telemetry?.acceleration || 0, d2.telemetry?.acceleration || 0) === 'better-1' ? 'h2h-winner' : ''}`}>{Math.round(d1.telemetry?.acceleration || 0)}%</div>
+                    <div className={`h2h-cell h2h-cell--1 ${compareStat(d1.telemetry?.acceleration || 0, d2.telemetry?.acceleration || 0) === 'better-1' ? 'h2h-winner' : ''}`}>{telemetryValue(d1.telemetry?.acceleration, '%')}</div>
                     <div className="h2h-label">ACCEL.</div>
-                    <div className={`h2h-cell h2h-cell--2 ${compareStat(d1.telemetry?.acceleration || 0, d2.telemetry?.acceleration || 0) === 'better-2' ? 'h2h-winner' : ''}`}>{Math.round(d2.telemetry?.acceleration || 0)}%</div>
+                    <div className={`h2h-cell h2h-cell--2 ${compareStat(d1.telemetry?.acceleration || 0, d2.telemetry?.acceleration || 0) === 'better-2' ? 'h2h-winner' : ''}`}>{telemetryValue(d2.telemetry?.acceleration, '%')}</div>
                 </div>
 
                 {/* Form/Sectors */}
