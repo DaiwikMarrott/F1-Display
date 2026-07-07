@@ -27,6 +27,35 @@ Audit date: 2026-07-04. “Implemented” means the current code path exists; it
 | Pit notifications and position changes | Partial | OpenF1-derived / replay-derived | Live notifications exist; replay pit counts advance historically, but replay does not emit transient historical pit popups. |
 | Data provenance labels | Implemented | Live / replay / latest-known / cached / stale / derived / estimated / demo / unavailable | Timing, map, analytics, and demo-only feeds are distinguished explicitly. |
 
+## Feature priority map
+
+The app intentionally mixes live OpenF1 inputs, derived analytics, replay behavior, and a few demo-style surfaces. The labels below are a planning guide for what should stay central in the product.
+
+| Priority | Features | Notes |
+| --- | --- | --- |
+| Important | Session catalogue and selector, live/replay standings, timing tower, track map, replay clock, tire age/current stint, sector analysis, data provenance labels, session-bound state isolation, stale-safe request handling | These are the core HUD and correctness features. They should remain truthful, fast, and visually primary. |
+| Not that important | Gap analysis, head-to-head, winner probability, form and momentum, strategy advisor, tire strategy, pit notifications | These are useful supporting views, but they should not be treated as authoritative race-control data. They can stay secondary as long as they remain clearly labeled. |
+| For fun | Incident tracker, team radio, weather, demo fallback content | These add atmosphere and presentation value. They are fine to keep lightweight, playful, and clearly separated from live facts. |
+
+## Next API integrations
+
+The free OpenF1 data that is currently not integrated yet should be added in this order so the app gains real race context without losing its truthfulness:
+
+1. `intervals` for real gap and overtake analysis.
+	- This would replace the current mostly unavailable gap surface with authoritative interval data.
+	- It also unlocks more reliable race-flow context for the timing tower and strategic analysis panels.
+2. `car_data` for bounded telemetry.
+	- This would turn the telemetry panel into a real measurement view with speed, throttle, brake, gear, and DRS-style signals when available.
+	- The panel should continue to fall back to unavailable states whenever the endpoint or session coverage is incomplete.
+3. `race_control` for incidents and flags.
+	- This would replace the seeded incident tracker with official race-control events such as incidents, penalties, safety-car phases, and track-limits context.
+4. weather feed coverage where OpenF1 exposes usable weather data.
+	- This would let the weather panel show real session conditions instead of generated weather.
+5. radio feed coverage where OpenF1 exposes usable radio data.
+	- This would replace the demo transcript surface with actual team communication if the endpoint quality is sufficient.
+
+If any of those sources are sparse or inconsistent, the app should keep the current behavior of showing a labeled unavailable or demo-only state instead of inferring values.
+
 ## Data and endpoint inventory
 
 | OpenF1 resource | Current use | Audit result |
